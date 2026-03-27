@@ -9,6 +9,7 @@ export type RestaurantRequest = {
   city: string
   initialUserName?: string
   initialUserEmail?: string
+  initialUserPassword?: string
   initialUserRole?: 'MANAGER' | 'STAFF' | 'CASHIER'
   status: 'PENDING' | 'APPROVED'
 }

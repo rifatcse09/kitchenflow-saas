@@ -1,3 +1,6 @@
+export { CustomerGuestProvider } from './CustomerGuestContext'
+export { CustomerQrEntry } from './CustomerQrEntry'
+export { useCustomerGuest } from './useCustomerGuest'
 export { CustomerLogin } from './CustomerLogin'
 export { CustomerWelcome } from './CustomerWelcome'
 export { CustomerMenu } from './CustomerMenu'

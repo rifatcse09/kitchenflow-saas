@@ -55,8 +55,8 @@ Run the Vite dev server (`apps/web`), then open paths relative to the app origin
 | Area | Paths |
 |------|--------|
 | **Root** | `/` → redirects to `/customer/welcome` |
-| **Customer** | `/customer/login` · `/customer/welcome` · `/customer/menu` · `/customer/cart` · `/customer/record-audio` · `/customer/record-video` · `/customer/tracking` |
-| **Restaurant** | `/restaurant/login` · `/restaurant/register` · `/restaurant/onboarding` · `/restaurant/dashboard` · `/restaurant/live-map` · `/restaurant/media` · `/restaurant/team` · `/restaurant/menu` · `/restaurant/orders-history` · `/restaurant/orders` · `/restaurant/kds` · `/restaurant/order/:id` (e.g. `/restaurant/order/1024`) |
+| **Customer** | `/customer/welcome` · **`/customer/r/:restaurantId/t/:tableCode`** (QR deep link) · `/customer/menu` · `/customer/cart` · `/customer/tracking` · optional `/customer/login` · `/customer/record-audio` · `/customer/record-video` |
+| **Restaurant** | `/restaurant/login` · `/restaurant/register` · `/restaurant/onboarding` · `/restaurant/dashboard` · `/restaurant/live-map` · `/restaurant/media` · `/restaurant/team` · `/restaurant/menu` · **`/restaurant/qr-codes`** (printable table URLs) · `/restaurant/orders-history` · `/restaurant/orders` · `/restaurant/kds` · `/restaurant/order/:id` |
 | **Platform admin** | `/admin/login` · `/admin/dashboard` · `/admin/restaurants` · `/admin/billing` · `/admin/subscriptions` · `/admin/activity` |
 
 Log in per portal (customer / restaurant staff / admin) to see the full sidebar or top navigation. The API (`apps/api`, default **http://localhost:4000**) should be running if you need live data. REST endpoints use the global prefix **`/api/v1`** (see below).
@@ -82,22 +82,59 @@ apps/web/
       components/        # e.g. ScreenFrame
 ```
 
-**`apps/api/`** — NestJS HTTP API (global prefix **`api/v1`**):
+**`apps/api/`** — NestJS HTTP API (global prefix **`api/v1`**) + **Prisma**:
 
 ```
 apps/api/
+  prisma/
+    schema.prisma        # Restaurant, User, MenuItem models
+    seed.ts              # Default admin, customer, tenants, demo logins
+    migrations/          # SQL migrations (PostgreSQL)
   src/
     main.ts              # Bootstrap, CORS, setGlobalPrefix('api/v1')
     app.module.ts
+    prisma/              # PrismaService (global module)
     app.controller.ts    # GET /api/v1/ (health-style root)
     auth/                # auth.controller → /api/v1/auth/*
     admin/               # admin.controller → /api/v1/admin/*
     restaurant/          # restaurant.controller → /api/v1/restaurant/*
-    data/                # StoreService (in-memory; swap for PostgreSQL later)
+    data/                # StoreService (Prisma + bcrypt passwords)
 ```
+
+**Database (local):** From the repo root, start Postgres (`docker compose up -d db`), then in **`apps/api`** copy **`.env.example`** → **`.env`**, run **`npx prisma migrate deploy`**, then **`npm run prisma:seed`**. The API must be able to reach **`DATABASE_URL`** (default `postgresql://postgres:postgres@localhost:5433/restaurant_platform`).
+
+**Install / run (copy-paste):**
+
+```bash
+docker compose up -d db
+cd apps/api && cp .env.example .env   # if you don’t have .env yet
+npx prisma migrate deploy
+npm run prisma:seed
+npm run start:dev
+```
+
+**Seed demo accounts** (bcrypt-hashed in DB):
+
+| Role | Email | Password |
+|------|--------|----------|
+| Platform admin | `admin@mdrifatul.info` | `123456` |
+| Customer | `customer@demo.com` | `customer123` |
+| Restaurant owner (approved tenant id **1**) | `john@smokeyhouse.com` | `owner123` |
+| Manager | `manager@bbq.com` | `manager123` |
+| Kitchen (KDS) | `kds@bbq.com` | `kds123` |
+| Pending onboarding (login blocked until admin approves) | `ava@tacorush.com`, `pending@grillco.com` | `owner123` |
+
+The web app uses **`DEMO_RESTAURANT_ID = 1`** when no restaurant session is active (matches the seeded approved tenant).
 
 **REST base URL:** `{API_ORIGIN}/api/v1` — e.g. `http://localhost:4000/api/v1/auth/login`  
 `VITE_API_URL` in the web app should be **only the origin** (no `/api/v1`); the client appends `/api/v1` automatically.
+
+**Frontend → backend connection**
+
+1. Start the API (`apps/api`, default port **4000**) so CORS allows `http://localhost:5173` (Vite).
+2. The React app reads **`import.meta.env.VITE_API_URL`** and builds **`API_BASE` = `{VITE_API_URL}/api/v1`** in `apps/web/src/shared/constants.ts`. All `fetch()` calls in `App.tsx` use that base (e.g. `/auth/login`, `/admin/...`).
+3. **`.env` file:** optional for local dev — if unset, the code falls back to **`http://localhost:4000`**. Use a file when the API runs elsewhere (another port, Docker hostname, staging). Copy **`apps/web/.env.example`** to **`.env`** or **`.env.local`** and set `VITE_API_URL=...`. Restart `npm run dev` after changing env vars.
+4. Only variables prefixed with **`VITE_`** are exposed to the browser (Vite rule).
 
 ---
 
@@ -116,8 +153,8 @@ apps/api/
 - Multi-tenant aware business logic.
 
 ## Data Layer
-- **PostgreSQL** as primary database.
-- **Prisma** or TypeORM (recommend Prisma for faster MVP).
+- **PostgreSQL** as primary database (see Docker Compose in repo root).
+- **Prisma** ORM (`apps/api/prisma`) with migrations and **`prisma/seed.ts`** for local defaults.
 
 ## Realtime
 - WebSockets via NestJS gateway + Socket.IO adapter.

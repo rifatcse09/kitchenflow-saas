@@ -4,8 +4,16 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+import {
+  RestaurantStatus,
+  RestaurantSubRole,
+  TeamRole,
+  UserRole,
+} from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 
-type RequestStatus = 'PENDING' | 'APPROVED';
+export type RequestStatus = 'PENDING' | 'APPROVED';
 
 export interface RestaurantRequest {
   id: number;
@@ -16,6 +24,7 @@ export interface RestaurantRequest {
   city: string;
   initialUserName?: string;
   initialUserEmail?: string;
+  initialUserPassword?: string;
   initialUserRole?: 'MANAGER' | 'STAFF' | 'CASHIER';
   status: RequestStatus;
 }
@@ -29,264 +38,287 @@ export interface MenuItem {
   available: boolean;
 }
 
-type UserRole = 'CUSTOMER' | 'RESTAURANT' | 'ADMIN';
-
 /** Tenant-internal RBAC: maps UI access (Owner / Manager / Kitchen KDS). */
-export type RestaurantSubRole = 'OWNER' | 'MANAGER' | 'KITCHEN';
-
-interface LoginPayload {
-  role: UserRole;
-  email: string;
-  password: string;
-}
-
-type AppUser =
-  | { role: 'CUSTOMER'; email: string; password: string; name: string }
-  | { role: 'ADMIN'; email: string; password: string; name: string }
-  | {
-      role: 'RESTAURANT';
-      email: string;
-      password: string;
-      name: string;
-      restaurantId: number;
-      approved: boolean;
-      restaurantSubRole: RestaurantSubRole;
-    };
+export type RestaurantSubRoleDto = 'OWNER' | 'MANAGER' | 'KITCHEN';
 
 export interface RestaurantUser {
   id: number;
   restaurantId: number;
   name: string;
   email: string;
-  role: 'OWNER' | 'MANAGER' | 'STAFF' | 'CASHIER';
+  role: 'MANAGER' | 'STAFF' | 'CASHIER';
   approved: boolean;
+}
+
+interface LoginPayload {
+  role: 'CUSTOMER' | 'RESTAURANT' | 'ADMIN';
+  email: string;
+  password: string;
+}
+
+const BCRYPT_ROUNDS = 10;
+
+function toRequestStatus(s: RestaurantStatus): RequestStatus {
+  return s === 'APPROVED' ? 'APPROVED' : 'PENDING';
+}
+
+function teamRoleToSubRole(
+  role: 'MANAGER' | 'STAFF' | 'CASHIER',
+): { sub: RestaurantSubRole; team: TeamRole } {
+  if (role === 'MANAGER') return { sub: 'MANAGER', team: 'MANAGER' };
+  return { sub: 'KITCHEN', team: role };
 }
 
 @Injectable()
 export class StoreService {
-  private nextRequestId = 1003;
-  private nextMenuId = 3;
-  private nextRestaurantUserId = 5001;
+  constructor(private readonly prisma: PrismaService) {}
 
-  private readonly requests: RestaurantRequest[] = [
-    {
-      id: 1001,
-      ownerName: 'John Carter',
-      ownerEmail: 'john@smokeyhouse.com',
-      ownerPassword: 'owner123',
-      restaurantName: 'Smokey House BBQ',
-      city: 'Dallas, TX',
-      status: 'PENDING',
-    },
-    {
-      id: 1002,
-      ownerName: 'Ava Smith',
-      ownerEmail: 'ava@tacorush.com',
-      ownerPassword: 'owner123',
-      restaurantName: 'Taco Rush Truck',
-      city: 'Austin, TX',
-      status: 'PENDING',
-    },
-  ];
+  private async hashPassword(plain: string): Promise<string> {
+    return bcrypt.hash(plain.trim(), BCRYPT_ROUNDS);
+  }
 
-  private readonly menuItems: MenuItem[] = [
-    {
-      id: 1,
-      restaurantId: 1001,
-      name: 'Ribeye Steak',
-      category: 'Steaks',
-      price: 29,
-      available: true,
-    },
-    {
-      id: 2,
-      restaurantId: 1001,
-      name: 'House Salad',
-      category: 'Appetizers',
-      price: 6,
-      available: true,
-    },
-  ];
-
-  private users: AppUser[] = [
-    {
-      role: 'CUSTOMER',
-      email: 'customer@demo.com',
-      password: 'customer123',
-      name: 'Guest Customer',
-    },
-    {
-      role: 'RESTAURANT',
-      email: 'john@smokeyhouse.com',
-      password: 'owner123',
-      name: 'John Carter',
-      restaurantId: 1001,
-      approved: false,
-      restaurantSubRole: 'OWNER',
-    },
-    {
-      role: 'RESTAURANT',
-      email: 'manager@bbq.com',
-      password: 'manager123',
-      name: 'Kitchen Manager',
-      restaurantId: 1001,
-      approved: true,
-      restaurantSubRole: 'MANAGER',
-    },
-    {
-      role: 'RESTAURANT',
-      email: 'kds@bbq.com',
-      password: 'kds123',
-      name: 'Line Cook (KDS)',
-      restaurantId: 1001,
-      approved: true,
-      restaurantSubRole: 'KITCHEN',
-    },
-    {
-      role: 'ADMIN',
-      email: 'admin@mdrifatul.info',
-      password: '123456',
-      name: 'Rifat Owner',
-    },
-  ];
-
-  private restaurantUsers: RestaurantUser[] = [
-    {
-      id: 5000,
-      restaurantId: 1001,
-      name: 'Kitchen Manager',
-      email: 'manager@bbq.com',
-      role: 'MANAGER',
-      approved: true,
-    },
-  ];
-
-  getDefaultPlatformOwner() {
+  async getDefaultPlatformOwner() {
+    const admin = await this.prisma.user.findFirst({
+      where: { role: 'ADMIN' },
+      orderBy: { id: 'asc' },
+    });
     return {
-      name: 'Rifat Owner',
-      email: 'admin@mdrifatul.info',
+      name: admin?.name ?? 'Platform Admin',
+      email: admin?.email ?? 'admin@mdrifatul.info',
       passwordHint: '123456',
     };
   }
 
-  getRequests() {
-    return this.requests;
+  async getRequests(): Promise<RestaurantRequest[]> {
+    const restaurants = await this.prisma.restaurant.findMany({
+      orderBy: { id: 'asc' },
+    });
+    const out: RestaurantRequest[] = [];
+    for (const r of restaurants) {
+      const owner = await this.prisma.user.findFirst({
+        where: { restaurantId: r.id, restaurantSubRole: 'OWNER' },
+      });
+      const extra = await this.prisma.user.findFirst({
+        where: {
+          restaurantId: r.id,
+          restaurantSubRole: { not: 'OWNER' },
+          teamRole: { not: null },
+        },
+        orderBy: { id: 'asc' },
+      });
+      out.push({
+        id: r.id,
+        ownerName: owner?.name ?? '',
+        ownerEmail: owner?.email ?? '',
+        ownerPassword: '',
+        restaurantName: r.name,
+        city: r.city,
+        status: toRequestStatus(r.status),
+        initialUserName: extra?.name,
+        initialUserEmail: extra?.email,
+        initialUserRole: extra?.teamRole ?? undefined,
+      });
+    }
+    return out;
   }
 
-  createRequest(payload: Omit<RestaurantRequest, 'id' | 'status'>) {
-    const request: RestaurantRequest = {
-      id: this.nextRequestId++,
-      status: 'PENDING',
-      ...payload,
-    };
-    this.requests.push(request);
+  async createRequest(
+    payload: Omit<RestaurantRequest, 'id' | 'status'>,
+  ): Promise<RestaurantRequest> {
+    const passwordHash = await this.hashPassword(payload.ownerPassword);
 
-    this.users.push({
-      role: 'RESTAURANT',
-      email: payload.ownerEmail,
-      password: payload.ownerPassword,
-      name: payload.ownerName,
-      restaurantId: request.id,
-      approved: false,
-      restaurantSubRole: 'OWNER',
+    const restaurant = await this.prisma.restaurant.create({
+      data: {
+        name: payload.restaurantName,
+        city: payload.city,
+        status: 'PENDING',
+        users: {
+          create: {
+            email: payload.ownerEmail.trim().toLowerCase(),
+            passwordHash,
+            name: payload.ownerName,
+            role: 'RESTAURANT',
+            restaurantSubRole: 'OWNER',
+            approved: false,
+          },
+        },
+      },
     });
 
-    if (payload.initialUserName && payload.initialUserEmail && payload.initialUserRole) {
-      this.restaurantUsers.push({
-        id: this.nextRestaurantUserId++,
-        restaurantId: request.id,
-        name: payload.initialUserName,
-        email: payload.initialUserEmail,
-        role: payload.initialUserRole,
-        approved: false,
+    if (
+      payload.initialUserName?.trim() &&
+      payload.initialUserEmail?.trim() &&
+      payload.initialUserRole
+    ) {
+      const { sub, team } = teamRoleToSubRole(payload.initialUserRole);
+      const initialPw = payload.initialUserPassword?.trim() || 'changeme123';
+      await this.prisma.user.create({
+        data: {
+          email: payload.initialUserEmail.trim().toLowerCase(),
+          passwordHash: await this.hashPassword(initialPw),
+          name: payload.initialUserName.trim(),
+          role: 'RESTAURANT',
+          restaurantId: restaurant.id,
+          restaurantSubRole: sub,
+          teamRole: team,
+          approved: false,
+        },
       });
     }
 
-    return request;
+    return {
+      id: restaurant.id,
+      ownerName: payload.ownerName,
+      ownerEmail: payload.ownerEmail,
+      ownerPassword: '',
+      restaurantName: payload.restaurantName,
+      city: payload.city,
+      status: 'PENDING',
+      initialUserName: payload.initialUserName,
+      initialUserEmail: payload.initialUserEmail,
+      initialUserRole: payload.initialUserRole,
+    };
   }
 
-  approveRequest(id: number) {
-    const request = this.requests.find((item) => item.id === id);
-    if (!request) {
+  async approveRequest(id: number) {
+    const restaurant = await this.prisma.restaurant.findUnique({ where: { id } });
+    if (!restaurant) {
       throw new NotFoundException(`Request ${id} not found`);
     }
-    request.status = 'APPROVED';
-    this.users = this.users.map((user) => {
-      if (user.role !== 'RESTAURANT' || user.restaurantId !== id) {
-        return user;
-      }
-      return { ...user, approved: true };
-    }) as AppUser[];
-    this.restaurantUsers = this.restaurantUsers.map((user) =>
-      user.restaurantId === id ? { ...user, approved: true } : user,
-    );
-    return request;
+    await this.prisma.restaurant.update({
+      where: { id },
+      data: { status: 'APPROVED' },
+    });
+    await this.prisma.user.updateMany({
+      where: { restaurantId: id },
+      data: { approved: true },
+    });
+    const list = await this.getRequests();
+    const row = list.find((r) => r.id === id);
+    if (!row) {
+      throw new NotFoundException(`Request ${id} not found after approve`);
+    }
+    return row;
   }
 
-  getMenuItems(restaurantId: number) {
-    return this.menuItems.filter((item) => item.restaurantId === restaurantId);
+  async getMenuItems(restaurantId: number): Promise<MenuItem[]> {
+    const items = await this.prisma.menuItem.findMany({
+      where: { restaurantId },
+      orderBy: { id: 'asc' },
+    });
+    return items.map((item) => ({
+      id: item.id,
+      restaurantId: item.restaurantId,
+      name: item.name,
+      category: item.category,
+      price: item.price,
+      available: item.available,
+    }));
   }
 
-  addMenuItem(
+  async addMenuItem(
     restaurantId: number,
     payload: Omit<MenuItem, 'id' | 'restaurantId' | 'available'>,
   ) {
-    const item: MenuItem = {
-      id: this.nextMenuId++,
-      restaurantId,
-      available: true,
-      ...payload,
-    };
-    this.menuItems.push(item);
-    return item;
-  }
-
-  getRestaurantUsers(restaurantId: number) {
-    return this.restaurantUsers.filter((item) => item.restaurantId === restaurantId);
-  }
-
-  addRestaurantUser(
-    restaurantId: number,
-    payload: { name: string; email: string; role: 'MANAGER' | 'STAFF' | 'CASHIER'; password: string },
-  ) {
-    const request = this.requests.find((item) => item.id === restaurantId);
-    if (!request || request.status !== 'APPROVED') {
+    const restaurant = await this.prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+    });
+    if (!restaurant || restaurant.status !== 'APPROVED') {
       throw new BadRequestException('Restaurant is pending approval by admin');
     }
-
-    const user: RestaurantUser = {
-      id: this.nextRestaurantUserId++,
-      restaurantId,
-      name: payload.name,
-      email: payload.email,
-      role: payload.role,
-      approved: true,
-    };
-    this.restaurantUsers.push(user);
-    const subRole: RestaurantSubRole =
-      payload.role === 'MANAGER' ? 'MANAGER' : 'KITCHEN';
-    this.users.push({
-      role: 'RESTAURANT',
-      email: payload.email,
-      password: payload.password,
-      name: payload.name,
-      restaurantId,
-      approved: true,
-      restaurantSubRole: subRole,
+    const item = await this.prisma.menuItem.create({
+      data: {
+        restaurantId,
+        name: payload.name,
+        category: payload.category,
+        price: payload.price,
+        available: true,
+      },
     });
-    return user;
+    return {
+      id: item.id,
+      restaurantId: item.restaurantId,
+      name: item.name,
+      category: item.category,
+      price: item.price,
+      available: item.available,
+    };
   }
 
-  login(payload: LoginPayload) {
+  async getRestaurantUsers(restaurantId: number): Promise<RestaurantUser[]> {
+    const users = await this.prisma.user.findMany({
+      where: {
+        restaurantId,
+        role: 'RESTAURANT',
+        restaurantSubRole: { not: 'OWNER' },
+      },
+      orderBy: { id: 'asc' },
+    });
+    return users.map((u) => ({
+      id: u.id,
+      restaurantId: u.restaurantId!,
+      name: u.name,
+      email: u.email,
+      role: (u.teamRole ?? 'MANAGER') as 'MANAGER' | 'STAFF' | 'CASHIER',
+      approved: u.approved,
+    }));
+  }
+
+  async addRestaurantUser(
+    restaurantId: number,
+    payload: {
+      name: string;
+      email: string;
+      role: 'MANAGER' | 'STAFF' | 'CASHIER';
+      password: string;
+    },
+  ) {
+    const restaurant = await this.prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+    });
+    if (!restaurant || restaurant.status !== 'APPROVED') {
+      throw new BadRequestException('Restaurant is pending approval by admin');
+    }
+    const { sub, team } = teamRoleToSubRole(payload.role);
+    const created = await this.prisma.user.create({
+      data: {
+        email: payload.email.trim().toLowerCase(),
+        passwordHash: await this.hashPassword(payload.password),
+        name: payload.name,
+        role: 'RESTAURANT',
+        restaurantId,
+        restaurantSubRole: sub,
+        teamRole: team,
+        approved: true,
+      },
+    });
+    return {
+      id: created.id,
+      restaurantId: created.restaurantId!,
+      name: created.name,
+      email: created.email,
+      role: payload.role,
+      approved: created.approved,
+    };
+  }
+
+  async login(payload: LoginPayload) {
     const normalizedEmail = payload.email.trim().toLowerCase();
     const normalizedPassword = payload.password.trim();
 
-    const user = this.users.find((item) => {
-      if (item.role !== payload.role) return false;
-      if (item.email.toLowerCase() !== normalizedEmail) return false;
-      if (item.password !== normalizedPassword) return false;
-      return true;
+    const roleFilter: UserRole =
+      payload.role === 'CUSTOMER'
+        ? 'CUSTOMER'
+        : payload.role === 'ADMIN'
+          ? 'ADMIN'
+          : 'RESTAURANT';
+
+    const user = await this.prisma.user.findFirst({
+      where: { email: normalizedEmail, role: roleFilter },
     });
+
+    const passwordOk =
+      Boolean(user) && (await bcrypt.compare(normalizedPassword, user!.passwordHash));
 
     const isAdminFallbackLogin =
       payload.role === 'ADMIN' &&
@@ -294,41 +326,178 @@ export class StoreService {
         normalizedEmail === 'admin@marsjrllc.com') &&
       (normalizedPassword === '123456' || normalizedPassword === 'default-admin-pass');
 
-    if (!user && !isAdminFallbackLogin) {
+    if (!passwordOk && !isAdminFallbackLogin) {
       throw new UnauthorizedException('Invalid email, password, or role');
     }
 
-    const resolvedUser =
-      user ??
-      ({
-        role: 'ADMIN',
-        email: 'admin@mdrifatul.info',
-        name: 'Rifat Owner',
-      } as const);
-
-    if (resolvedUser.role === 'RESTAURANT' && !resolvedUser.approved) {
-      throw new UnauthorizedException('Restaurant account is pending admin approval');
-    }
-
-    const fakeToken = `token-${resolvedUser.role.toLowerCase()}-${Date.now()}`;
-    const baseUser = {
-      role: resolvedUser.role,
-      email: resolvedUser.email,
-      name: resolvedUser.name,
-    };
-    if (resolvedUser.role === 'RESTAURANT') {
-      return {
-        token: fakeToken,
-        user: {
-          ...baseUser,
-          tenantId: resolvedUser.restaurantId,
-          restaurantSubRole: resolvedUser.restaurantSubRole,
-        },
+    if (passwordOk && user) {
+      if (user.role === 'RESTAURANT' && !user.approved) {
+        throw new UnauthorizedException('Restaurant account is pending admin approval');
+      }
+      const fakeToken = `token-${user.role.toLowerCase()}-${Date.now()}`;
+      const baseUser = {
+        role: user.role as 'CUSTOMER' | 'ADMIN' | 'RESTAURANT',
+        email: user.email,
+        name: user.name,
       };
+      if (user.role === 'RESTAURANT') {
+        const sub = user.restaurantSubRole ?? 'MANAGER';
+        return {
+          token: fakeToken,
+          user: {
+            ...baseUser,
+            tenantId: user.restaurantId!,
+            restaurantSubRole: sub as RestaurantSubRoleDto,
+          },
+        };
+      }
+      return { token: fakeToken, user: baseUser };
     }
+
+    const admin = await this.prisma.user.findFirst({
+      where: { role: 'ADMIN' },
+      orderBy: { id: 'asc' },
+    });
+    const fakeToken = `token-admin-${Date.now()}`;
     return {
       token: fakeToken,
-      user: baseUser,
+      user: {
+        role: 'ADMIN' as const,
+        email: admin?.email ?? 'admin@mdrifatul.info',
+        name: admin?.name ?? 'Platform Admin',
+      },
+    };
+  }
+
+  async getRestaurantPublicProfile(restaurantId: number) {
+    const r = await this.prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+    });
+    if (!r || r.status !== 'APPROVED') {
+      throw new NotFoundException('Restaurant not available');
+    }
+    return { id: r.id, name: r.name, city: r.city };
+  }
+
+  async createGuestOrder(
+    restaurantId: number,
+    dto: {
+      tableCode: string;
+      customerPhone?: string;
+      customerEmail?: string;
+      items: { menuItemId: number; qty: number; note?: string }[];
+    },
+  ) {
+    const restaurant = await this.prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+    });
+    if (!restaurant || restaurant.status !== 'APPROVED') {
+      throw new BadRequestException('Restaurant is not accepting orders');
+    }
+    if (!dto.items.length) {
+      throw new BadRequestException('Order must include at least one item');
+    }
+    const tableCode = dto.tableCode.trim();
+    if (!tableCode) {
+      throw new BadRequestException('Table code is required (from QR)');
+    }
+
+    const menuIds = [...new Set(dto.items.map((i) => i.menuItemId))];
+    const menuItems = await this.prisma.menuItem.findMany({
+      where: { restaurantId, id: { in: menuIds }, available: true },
+    });
+    if (menuItems.length !== menuIds.length) {
+      throw new BadRequestException('One or more menu items are invalid or unavailable');
+    }
+
+    const phone = dto.customerPhone?.trim() || null;
+    const email = dto.customerEmail?.trim().toLowerCase() || null;
+
+    const order = await this.prisma.$transaction(async (tx) => {
+      const o = await tx.guestOrder.create({
+        data: {
+          restaurantId,
+          tableCode,
+          customerPhone: phone,
+          customerEmail: email,
+          status: 'PENDING',
+          lines: {
+            create: dto.items.map((line) => {
+              const mi = menuItems.find((m) => m.id === line.menuItemId)!;
+              const qty = Math.max(1, Math.floor(line.qty));
+              return {
+                menuItemId: line.menuItemId,
+                qty,
+                unitPrice: mi.price,
+                note: line.note?.trim() || null,
+              };
+            }),
+          },
+        },
+        include: {
+          lines: { include: { menuItem: true } },
+        },
+      });
+      return o;
+    });
+
+    return this.formatGuestOrder(order);
+  }
+
+  async listGuestOrders(restaurantId: number) {
+    const restaurant = await this.prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+    });
+    if (!restaurant) {
+      throw new NotFoundException(`Restaurant ${restaurantId} not found`);
+    }
+
+    const orders = await this.prisma.guestOrder.findMany({
+      where: { restaurantId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        lines: { include: { menuItem: true } },
+      },
+      take: 100,
+    });
+
+    return orders.map((o) => this.formatGuestOrder(o));
+  }
+
+  private formatGuestOrder(order: {
+    id: number;
+    restaurantId: number;
+    tableCode: string;
+    customerPhone: string | null;
+    customerEmail: string | null;
+    status: string;
+    createdAt: Date;
+    lines: Array<{
+      id: number;
+      qty: number;
+      unitPrice: number;
+      note: string | null;
+      menuItem: { name: string; category: string };
+    }>;
+  }) {
+    const subtotal = order.lines.reduce((s, l) => s + l.unitPrice * l.qty, 0);
+    return {
+      id: order.id,
+      restaurantId: order.restaurantId,
+      tableCode: order.tableCode,
+      customerPhone: order.customerPhone,
+      customerEmail: order.customerEmail,
+      status: order.status,
+      createdAt: order.createdAt.toISOString(),
+      total: Math.round(subtotal * 100) / 100,
+      lines: order.lines.map((l) => ({
+        id: l.id,
+        name: l.menuItem.name,
+        category: l.menuItem.category,
+        qty: l.qty,
+        unitPrice: l.unitPrice,
+        note: l.note,
+      })),
     };
   }
 }

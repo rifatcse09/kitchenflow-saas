@@ -24,10 +24,14 @@ export function RestaurantRegister({
       restaurantName: String(form.get('restaurantName') ?? ''),
       city: String(form.get('city') ?? ''),
     }
+    const initialPassword = String(form.get('initialUserPassword') ?? '').trim()
     if (initialName && initialEmail) {
       payload.initialUserName = initialName
       payload.initialUserEmail = initialEmail
       payload.initialUserRole = initialRole
+      if (initialPassword) {
+        payload.initialUserPassword = initialPassword
+      }
     }
     await onSubmitRegistration(payload)
     event.currentTarget.reset()
@@ -73,6 +77,16 @@ export function RestaurantRegister({
             <option value="STAFF">Staff</option>
             <option value="CASHIER">Cashier</option>
           </select>
+        </label>
+        <label className="field-label">
+          Initial user password (optional)
+          <input
+            className="field"
+            name="initialUserPassword"
+            type="password"
+            placeholder="Leave blank to use server default (changeme123)"
+            autoComplete="new-password"
+          />
         </label>
         <button className="primary-btn" type="submit">
           Submit Registration

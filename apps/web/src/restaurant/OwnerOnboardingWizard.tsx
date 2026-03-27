@@ -37,7 +37,8 @@ export function OwnerOnboardingWizard({ tenantId }: { tenantId: number }) {
       {step === 2 ? <p className="hint">Menu CSV import or Menu manager when live.</p> : null}
       {step === 3 ? (
         <p className="hint">
-          {'Generate https://app/r/{slug}/t/{table} QR URLs for print (mock).'}
+          After go-live, print QR codes from <strong>Table QR links</strong> (<code>/restaurant/qr-codes</code>).
+          Guest URLs look like <code>/customer/r/1/t/T12</code> (tenant id + table code) — no login.
         </p>
       ) : null}
       <button

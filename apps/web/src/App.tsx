@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import './App.css'
 import {
   AdminActivity,
@@ -11,8 +11,10 @@ import {
 } from './admin'
 import {
   CustomerCart,
+  CustomerGuestProvider,
   CustomerLogin,
   CustomerMenu,
+  CustomerQrEntry,
   CustomerRecordAudio,
   CustomerRecordVideo,
   CustomerTracking,
@@ -42,12 +44,14 @@ import {
   RestaurantMenuManage,
   RestaurantOrderDetails,
   RestaurantOrders,
+  RestaurantQrCodes,
   RestaurantRegister,
   RestaurantRoleDashboard,
   RestaurantTeamUsers,
 } from './restaurant'
 
 function App() {
+  const location = useLocation()
   const [restaurantRequests, setRestaurantRequests] = useState<RestaurantRequest[]>([])
   const [restaurantMenu, setRestaurantMenu] = useState<MenuItem[]>([])
   const [restaurantUsers, setRestaurantUsers] = useState<RestaurantTeamUser[]>([])
@@ -63,6 +67,8 @@ function App() {
   }>({})
 
   const activeTenantId = authState.restaurant?.tenantId ?? DEMO_RESTAURANT_ID
+  const isAdminRoute = location.pathname.startsWith('/admin')
+  const isRestaurantRoute = location.pathname.startsWith('/restaurant')
 
   async function refreshAdminCatalog() {
     const [ownerRes, requestsRes] = await Promise.all([
@@ -109,14 +115,16 @@ function App() {
   }
 
   useEffect(() => {
+    if (!isRestaurantRoute) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate menu/users when tenant changes
     void refreshTenantData(activeTenantId)
-  }, [activeTenantId])
+  }, [activeTenantId, isRestaurantRoute])
 
   useEffect(() => {
+    if (!isAdminRoute) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate admin catalog on app load
     void refreshAdminCatalog()
-  }, [])
+  }, [isAdminRoute])
 
   const pendingCount = useMemo(
     () => restaurantRequests.filter((request) => request.status === 'PENDING').length,
@@ -209,6 +217,7 @@ function App() {
       return [
         { to: '/restaurant/dashboard', label: 'Store operations' },
         { to: '/restaurant/menu', label: 'Menu & availability' },
+        { to: '/restaurant/qr-codes', label: 'Table QR links' },
         { to: '/restaurant/orders-history', label: 'Order history' },
         { to: '/restaurant/orders', label: 'Live queue' },
       ]
@@ -219,6 +228,7 @@ function App() {
       { to: '/restaurant/live-map', label: 'Live tables' },
       { to: '/restaurant/media', label: 'Media review' },
       { to: '/restaurant/menu', label: 'Menu manager' },
+      { to: '/restaurant/qr-codes', label: 'Table QR links' },
       { to: '/restaurant/orders-history', label: 'Order history' },
       { to: '/restaurant/team', label: 'Staff management' },
       { to: '/restaurant/orders', label: 'Kitchen queue' },
@@ -245,34 +255,37 @@ function App() {
       <Route
         path="/customer/*"
         element={
-          <PortalLayout
-            portal="Customer"
-            description="Guest ordering flow"
-            isAuthenticated={Boolean(authState.customer)}
-            navItems={[
-              { to: '/customer/login', label: 'Customer Login' },
-              { to: '/customer/welcome', label: 'Welcome / QR Entry' },
-              { to: '/customer/menu', label: 'Digital Menu' },
-              { to: '/customer/cart', label: 'Order Review' },
-              { to: '/customer/record-audio', label: 'Audio Confirmation' },
-              { to: '/customer/record-video', label: 'Video Confirmation' },
-              { to: '/customer/tracking', label: 'Track Order Status' },
-            ]}
-          >
-            <Routes>
-              <Route path="/" element={<Navigate to="/customer/login" replace />} />
-              <Route
-                path="login"
-                element={<CustomerLogin onLogin={login} sessionUser={authState.customer} />}
-              />
-              <Route path="welcome" element={<CustomerWelcome />} />
-              <Route path="menu" element={<CustomerMenu />} />
-              <Route path="cart" element={<CustomerCart />} />
-              <Route path="record-audio" element={<CustomerRecordAudio />} />
-              <Route path="record-video" element={<CustomerRecordVideo />} />
-              <Route path="tracking" element={<CustomerTracking />} />
-            </Routes>
-          </PortalLayout>
+          <CustomerGuestProvider>
+            <PortalLayout
+              portal="Customer"
+              description="Scan QR · order without an account"
+              isAuthenticated={Boolean(authState.customer)}
+              navItems={[
+                { to: '/customer/welcome', label: 'Welcome / QR' },
+                { to: '/customer/menu', label: 'Menu' },
+                { to: '/customer/cart', label: 'Cart & checkout' },
+                { to: '/customer/tracking', label: 'Order status' },
+                { to: '/customer/record-audio', label: 'Audio (optional)' },
+                { to: '/customer/record-video', label: 'Video (optional)' },
+                { to: '/customer/login', label: 'Login (optional)' },
+              ]}
+            >
+              <Routes>
+                <Route path="/" element={<Navigate to="/customer/welcome" replace />} />
+                <Route path="r/:restaurantId/t/:tableCode" element={<CustomerQrEntry />} />
+                <Route
+                  path="login"
+                  element={<CustomerLogin onLogin={login} sessionUser={authState.customer} />}
+                />
+                <Route path="welcome" element={<CustomerWelcome />} />
+                <Route path="menu" element={<CustomerMenu />} />
+                <Route path="cart" element={<CustomerCart />} />
+                <Route path="record-audio" element={<CustomerRecordAudio />} />
+                <Route path="record-video" element={<CustomerRecordVideo />} />
+                <Route path="tracking" element={<CustomerTracking />} />
+              </Routes>
+            </PortalLayout>
+          </CustomerGuestProvider>
         }
       />
 
@@ -340,7 +353,8 @@ function App() {
                 }
               />
               <Route path="orders-history" element={<OrderHistoryPro tenantId={activeTenantId} />} />
-              <Route path="orders" element={<RestaurantOrders />} />
+              <Route path="qr-codes" element={<RestaurantQrCodes tenantId={activeTenantId} />} />
+              <Route path="orders" element={<RestaurantOrders tenantId={activeTenantId} />} />
               <Route path="kds" element={<KitchenKDS tenantId={activeTenantId} />} />
               <Route path="order/:id" element={<RestaurantOrderDetails />} />
             </Routes>

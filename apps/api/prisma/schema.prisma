@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  RESTAURANT
+}
+
+/// Login / KDS routing (maps to UI RBAC)
+enum RestaurantSubRole {
+  OWNER
+  MANAGER
+  KITCHEN
+}
+
+/// Staff row labels (owner-created team)
+enum TeamRole {
+  MANAGER
+  STAFF
+  CASHIER
+}
+
+enum RestaurantStatus {
+  PENDING
+  APPROVED
+}
+
+enum OrderStatus {
+  PENDING
+  COOKING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+model Restaurant {
+  id        Int                @id @default(autoincrement())
+  name      String
+  city      String
+  status    RestaurantStatus   @default(PENDING)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  menuItems MenuItem[]
+  users     User[]
+  orders    GuestOrder[]
+}
+
+model GuestOrder {
+  id              Int          @id @default(autoincrement())
+  restaurantId    Int
+  restaurant      Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  /// Table / seat code from QR (e.g. T12)
+  tableCode       String
+  /// Optional — saved for receipts & future marketing (no account required)
+  customerPhone   String?
+  customerEmail   String?
+  status          OrderStatus  @default(PENDING)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  lines           GuestOrderLine[]
+}
+
+model GuestOrderLine {
+  id         Int       @id @default(autoincrement())
+  orderId    Int
+  order      GuestOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId Int
+  menuItem   MenuItem  @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+  qty        Int
+  /// Price snapshot at order time
+  unitPrice  Float
+  note       String?
+}
+
+model MenuItem {
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  category     String
+  price        Float
+  available    Boolean    @default(true)
+  orderLines   GuestOrderLine[]
+}
+
+model User {
+  id                  Int                  @id @default(autoincrement())
+  email               String               @unique
+  passwordHash        String
+  name                String
+  role                UserRole
+  restaurantId        Int?
+  restaurant          Restaurant?          @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurantSubRole   RestaurantSubRole?
+  /// For restaurant staff: MANAGER line vs STAFF/CASHIER (KITCHEN login)
+  teamRole            TeamRole?
+  approved            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
