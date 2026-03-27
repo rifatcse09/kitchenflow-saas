@@ -1,0 +1,27 @@
+# --- Dependencies ---
+node_modules/
+
+# --- NestJS build ---
+dist/
+
+# --- Environment (keep *.example) ---
+.env
+.env.*
+!.env.example
+
+# --- Tests & coverage ---
+coverage/
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- OS & editors ---
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

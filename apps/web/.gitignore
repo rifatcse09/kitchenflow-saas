@@ -1,0 +1,37 @@
+# --- Dependencies ---
+node_modules/
+
+# --- Vite / React build ---
+dist/
+dist-ssr/
+
+# --- Environment (keep *.example) ---
+.env
+.env.*
+!.env.example
+
+# --- Vite cache ---
+.vite/
+
+# --- Local overrides ---
+*.local
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# --- OS & editors ---
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

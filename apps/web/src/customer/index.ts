@@ -1,0 +1,7 @@
+export { CustomerLogin } from './CustomerLogin'
+export { CustomerWelcome } from './CustomerWelcome'
+export { CustomerMenu } from './CustomerMenu'
+export { CustomerCart } from './CustomerCart'
+export { CustomerRecordAudio } from './CustomerRecordAudio'
+export { CustomerRecordVideo } from './CustomerRecordVideo'
+export { CustomerTracking } from './CustomerTracking'

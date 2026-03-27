@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KitchenFlow - UI Prototype</title>
+    <style>
+      :root {
+        --bg: #0f0f12;
+        --card: #ffffff;
+        --text: #161616;
+        --muted: #6f6f74;
+        --line: #ececf0;
+        --accent: #d93434;
+        --accent-dark: #b82727;
+        --pill: #f5f5f7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: radial-gradient(circle at top, #1d1e26 0%, var(--bg) 45%);
+        color: #f4f4f7;
+      }
+
+      .wrap {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 28px 20px 40px;
+      }
+
+      .title {
+        font-size: 32px;
+        line-height: 1.2;
+        margin: 0;
+        font-weight: 800;
+      }
+
+      .subtitle {
+        margin: 10px 0 28px;
+        color: #b9bcc9;
+        font-size: 15px;
+      }
+
+      .screens {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(260px, 1fr));
+        gap: 28px;
+      }
+
+      .screen-block h3 {
+        margin: 0 0 10px;
+        font-size: 14px;
+        color: #d7dae4;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+      }
+
+      .phone {
+        background: #000;
+        border-radius: 42px;
+        padding: 10px;
+        box-shadow:
+          0 22px 40px rgba(0, 0, 0, 0.45),
+          0 0 0 1px rgba(255, 255, 255, 0.06);
+      }
+
+      .notch {
+        width: 46%;
+        height: 22px;
+        margin: 0 auto 6px;
+        border-radius: 0 0 16px 16px;
+        background: #0a0a0a;
+      }
+
+      .display {
+        height: 700px;
+        border-radius: 34px;
+        overflow: hidden;
+        background: #1c1c1f;
+        position: relative;
+      }
+
+      .hero {
+        height: 230px;
+        padding: 16px 16px 18px;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.26), rgba(0, 0, 0, 0.66)),
+          url("https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80")
+            center/cover no-repeat;
+        color: #fff;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .header-title {
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.2);
+        font-size: 14px;
+      }
+
+      .hero-copy {
+        margin-top: 58px;
+        font-size: 28px;
+        line-height: 1.05;
+        font-weight: 800;
+        max-width: 200px;
+      }
+
+      .panel {
+        margin-top: -26px;
+        background: var(--card);
+        border-radius: 26px 26px 0 0;
+        height: calc(100% - 204px);
+        color: var(--text);
+        padding: 14px 14px 88px;
+        overflow: auto;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 10px;
+        overflow: auto;
+        padding: 2px 0 10px;
+      }
+
+      .tab {
+        background: var(--pill);
+        color: #444;
+        border-radius: 20px;
+        padding: 8px 14px;
+        white-space: nowrap;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .tab.active {
+        background: #232323;
+        color: #fff;
+      }
+
+      .item {
+        display: flex;
+        gap: 12px;
+        padding: 12px 2px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .thumb {
+        width: 58px;
+        height: 58px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #c8c8cd, #9b9ca4);
+      }
+
+      .item-main {
+        flex: 1;
+      }
+
+      .item-title {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 700;
+      }
+
+      .meta {
+        margin: 3px 0 7px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .note {
+        font-size: 13px;
+        color: #4d4f58;
+        font-weight: 600;
+      }
+
+      .price {
+        font-size: 23px;
+        font-weight: 800;
+      }
+
+      .bottom-bar {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+        background: #111;
+        color: #fff;
+        border-radius: 26px;
+        padding: 12px 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .bottom-bar .left {
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      .bottom-bar .right {
+        font-size: 26px;
+        font-weight: 800;
+      }
+
+      .tiny {
+        font-size: 12px;
+        color: #bbb;
+        margin-left: 5px;
+      }
+
+      .record-box {
+        background: #fff;
+        color: #171717;
+        border-radius: 20px;
+        margin-top: -34px;
+        position: relative;
+        padding: 18px 16px 90px;
+        height: calc(100% - 196px);
+      }
+
+      .record-top {
+        color: #2f3137;
+        font-size: 30px;
+        line-height: 1.05;
+        font-weight: 800;
+        margin: 0 0 14px;
+      }
+
+      .helper {
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        padding: 18px 10px;
+        text-align: center;
+      }
+
+      .mic {
+        width: 84px;
+        height: 84px;
+        margin: 0 auto 8px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, #ff7f7f, var(--accent));
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 34px;
+        box-shadow: 0 10px 20px rgba(217, 52, 52, 0.28);
+      }
+
+      .helper p {
+        margin: 0;
+        color: #565861;
+        font-weight: 600;
+      }
+
+      .example {
+        margin-top: 14px;
+        border-radius: 12px;
+        background: #f5f6f8;
+        color: #878995;
+        padding: 14px;
+        text-align: center;
+        font-size: 16px;
+      }
+
+      .tag {
+        margin-top: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: #4e5059;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .capture {
+        height: 250px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, #2f2f34, #151518);
+        display: grid;
+        place-items: center;
+        color: #fff;
+        margin: 10px 0 12px;
+        font-size: 17px;
+        font-weight: 700;
+        border: 2px solid #303038;
+      }
+
+      .confirm-box {
+        background: #fff;
+        border-radius: 20px;
+        margin-top: 12px;
+        padding: 16px;
+      }
+
+      .confirm-label {
+        margin: 0 0 8px;
+        color: #5e616b;
+        font-size: 15px;
+      }
+
+      .confirm-text {
+        margin: 0 0 14px;
+        font-size: 29px;
+        line-height: 1.1;
+        font-weight: 800;
+        color: #151515;
+      }
+
+      .btn {
+        width: 100%;
+        border: 0;
+        border-radius: 24px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 800;
+        font-size: 18px;
+        padding: 14px;
+      }
+
+      .btn:hover {
+        background: var(--accent-dark);
+      }
+
+      .foot {
+        margin-top: 24px;
+        color: #b8bccb;
+        font-size: 13px;
+      }
+
+      @media (max-width: 1050px) {
+        .screens {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <h1 class="title">UI Design Preview (MVP)</h1>
+      <p class="subtitle">
+        First visual pass for customer ordering flow: Menu -> Record Order -> Confirm Order.
+      </p>
+
+      <section class="screens">
+        <article class="screen-block">
+          <h3>Screen 1 - Menu & Order Builder</h3>
+          <div class="phone">
+            <div class="notch"></div>
+            <div class="display">
+              <div class="hero">
+                <div class="row">
+                  <div class="icon">&#x2039;</div>
+                  <div class="header-title">BBQ on the Ave</div>
+                  <div class="icon">&#9776;</div>
+                </div>
+                <div class="hero-copy">Welcome<br />Place Your Order</div>
+              </div>
+
+              <div class="panel">
+                <div class="tabs">
+                  <div class="tab">Appetizers</div>
+                  <div class="tab active">Steaks</div>
+                  <div class="tab">BBQ Plates</div>
+                  <div class="tab">Drinks</div>
+                  <div class="tab">Desserts</div>
+                </div>
+
+                <div class="item">
+                  <div class="thumb"></div>
+                  <div class="item-main">
+                    <h4 class="item-title">Ribeye Steak</h4>
+                    <p class="meta">Ribeye, steak fries, sauce</p>
+                    <div class="note">+ Add Note</div>
+                  </div>
+                  <div class="price">$29</div>
+                </div>
+
+                <div class="item">
+                  <div class="thumb"></div>
+                  <div class="item-main">
+                    <h4 class="item-title">Mashed Potatoes</h4>
+                    <p class="meta">Creamy mashed side</p>
+                    <div class="note">+ Add Note</div>
+                  </div>
+                  <div class="price">$7</div>
+                </div>
+
+                <div class="item">
+                  <div class="thumb"></div>
+                  <div class="item-main">
+                    <h4 class="item-title">House Salad</h4>
+                    <p class="meta">Fresh greens + dressing</p>
+                    <div class="note">+ Add Note</div>
+                  </div>
+                  <div class="price">$6</div>
+                </div>
+              </div>
+
+              <div class="bottom-bar">
+                <div class="left">View Order</div>
+                <div class="right">$0.00 <span class="tiny">0 items</span></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="screen-block">
+          <h3>Screen 2 - Audio Confirmation</h3>
+          <div class="phone">
+            <div class="notch"></div>
+            <div class="display">
+              <div class="hero">
+                <div class="row">
+                  <div class="icon">&#x2039;</div>
+                  <div class="header-title">Record Your Order</div>
+                  <div class="icon">&#9675;</div>
+                </div>
+              </div>
+
+              <section class="record-box">
+                <h2 class="record-top">Please record and confirm your order.</h2>
+
+                <div class="helper">
+                  <div class="mic">&#127908;</div>
+                  <p>Tap to record, tell us your order</p>
+                </div>
+
+                <div class="example">"Ribeye steak medium rare with mashed potatoes."</div>
+                <div class="tag">&#128439; Helps prevent order disputes</div>
+
+                <div class="bottom-bar" style="left: 16px; right: 16px; bottom: 16px">
+                  <div class="left">View Order</div>
+                  <div class="right">$38.00 <span class="tiny">1 item</span></div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <article class="screen-block">
+          <h3>Screen 3 - Video Confirmation</h3>
+          <div class="phone">
+            <div class="notch"></div>
+            <div class="display">
+              <div class="hero">
+                <div class="row">
+                  <div class="icon">&#x2039;</div>
+                  <div class="header-title">Confirm Your Order</div>
+                  <div class="icon">&#128249;</div>
+                </div>
+                <div class="capture">Live camera preview (mock)</div>
+              </div>
+
+              <section class="confirm-box">
+                <p class="confirm-label">Please confirm your order:</p>
+                <p class="confirm-text">Ribeye steak medium rare with mashed potatoes.</p>
+                <button class="btn">Start Recording</button>
+                <p class="tag">Video proof prevents order disputes.</p>
+              </section>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <p class="foot">
+        Next step after approval: convert this exact look into React components and connect to NestJS APIs.
+      </p>
+    </main>
+  </body>
+</html>
