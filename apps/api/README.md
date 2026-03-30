@@ -25,23 +25,52 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Quick start (matches Cursor skill: `@init`)
+
+### 1) Start Postgres (from repo root)
+```bash
+docker compose up -d db
+```
+
+### 2) Configure env + install deps
+```bash
+cd apps/api
+cp .env.example .env   # if you don't have .env yet
+pnpm install
+```
+
+### 3) Run Prisma migrations + seed
+```bash
+pnpm prisma generate
+pnpm prisma migrate deploy
+pnpm prisma:seed
+```
+
+### 4) Start API (dev)
+```bash
+pnpm start:dev
+```
+
+API base URL:
+- `http://localhost:4000/api/v1`
+
 ## Project setup
 
 ```bash
-$ npm install
+$ pnpm install
 ```
 
 ## Compile and run the project
 
 ```bash
 # development
-$ npm run start
+$ pnpm start
 
 # watch mode
-$ npm run start:dev
+$ pnpm start:dev
 
 # production mode
-$ npm run start:prod
+$ pnpm start:prod
 ```
 
 ## Run tests
