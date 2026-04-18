@@ -101,7 +101,9 @@ apps/api/
     data/                # StoreService (Prisma + bcrypt passwords)
 ```
 
-**Database (local):** From the repo root, start Postgres (`docker compose up -d db`), then in **`apps/api`** copy **`.env.example`** → **`.env`**, run **`npx prisma migrate deploy`**, then **`npm run prisma:seed`**. The API must be able to reach **`DATABASE_URL`** (default `postgresql://postgres:postgres@localhost:5433/restaurant_platform`).
+**Database (local):** From the repo root, start Postgres (`docker compose up -d db`), then in **`apps/api`** copy **`.env.example`** → **`.env`**, run **`npx prisma migrate deploy`**, then **`npm run prisma:seed`**. The API must be able to reach **`DATABASE_URL`** (default `postgresql://postgres:postgres@localhost:5434/restaurant_platform`).
+
+**Local URLs:** **Frontend (Vite):** [http://localhost:5173](http://localhost:5173) · **API:** [http://localhost:4000](http://localhost:4000) · **Postgres (Docker maps to host):** `localhost:5434`
 
 **Install / run (copy-paste):**
 
