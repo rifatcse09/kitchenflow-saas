@@ -505,6 +505,12 @@
   background-position: center;
 }
 
+.menu-food-thumb-img {
+  display: block;
+  object-fit: cover;
+  background: #f1f5f9;
+}
+
 .food-1 {
   background-position: 10% 20%;
 }
@@ -1632,6 +1638,15 @@ a.ghost-btn {
   border-radius: 8px;
   background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
   flex-shrink: 0;
+}
+
+.menu-thumb-img {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #f1f5f9;
 }
 
 .menu-row .item-main {

@@ -1,6 +1,10 @@
 # KitchenFlow
 
-Restaurant ordering platform (QR menu -> live kitchen display -> customer-ready status), built as a multi-tenant SaaS foundation using **NestJS + React + PostgreSQL + Docker**.
+Restaurant ordering platform (QR menu → live kitchen display → customer-ready status), built as a multi-tenant SaaS foundation using **NestJS + React + PostgreSQL + Docker**.
+
+**Package docs:** [Web app — `apps/web`](apps/web/README.md) · [HTTP API — `apps/api`](apps/api/README.md)
+
+**Local services:** `docker compose` in this repo runs **PostgreSQL only** (port **5434** on the host). Run the **NestJS API** (`apps/api`, default port **4000**) and the **Vite web app** (`apps/web`, default **5173**) from each app directory after installing dependencies there.
 
 ---
 
@@ -55,9 +59,9 @@ Run the Vite dev server (`apps/web`), then open paths relative to the app origin
 | Area | Paths |
 |------|--------|
 | **Root** | `/` → redirects to `/customer/welcome` |
-| **Customer** | `/customer/welcome` · **`/customer/r/:restaurantId/t/:tableCode`** (QR deep link) · `/customer/menu` · `/customer/cart` · `/customer/tracking` · optional `/customer/login` · `/customer/record-audio` · `/customer/record-video` |
-| **Restaurant** | `/restaurant/login` · `/restaurant/register` · `/restaurant/onboarding` · `/restaurant/dashboard` · `/restaurant/live-map` · `/restaurant/media` · `/restaurant/team` · `/restaurant/menu` · **`/restaurant/qr-codes`** (printable table URLs) · `/restaurant/orders-history` · `/restaurant/orders` · `/restaurant/kds` · `/restaurant/order/:id` |
-| **Platform admin** | `/admin/login` · `/admin/dashboard` · `/admin/restaurants` · `/admin/billing` · `/admin/subscriptions` · `/admin/activity` |
+| **Customer** | `/customer/welcome` · **`/customer/r/:restaurantId/t/:tableCode`** (QR deep link) · `/customer/menu` · `/customer/cart` · `/customer/tracking` · `/customer/login` · `/customer/register` · `/customer/record-audio` · `/customer/record-video` · `/customer/sign-out` |
+| **Restaurant** | `/restaurant/login` · `/restaurant/register` · `/restaurant/onboarding` · `/restaurant/dashboard` · `/restaurant/live-map` · `/restaurant/media` · `/restaurant/team` · `/restaurant/menu` · **`/restaurant/qr-codes`** (printable table URLs) · `/restaurant/orders-history` · `/restaurant/subscription` · `/restaurant/orders` · `/restaurant/kds` · `/restaurant/order/:id` · `/restaurant/sign-out` |
+| **Platform admin** | `/admin/login` · `/admin/dashboard` · `/admin/restaurants` · `/admin/billing` · `/admin/subscriptions` · `/admin/activity` · `/admin/sign-out` |
 
 Log in per portal (customer / restaurant staff / admin) to see the full sidebar or top navigation. The API (`apps/api`, default **http://localhost:4000**) should be running if you need live data. REST endpoints use the global prefix **`/api/v1`** (see below).
 
@@ -69,36 +73,39 @@ Log in per portal (customer / restaurant staff / admin) to see the full sidebar 
 
 ```
 apps/web/
+  public/
+    menu-food/           # Menu thumbnails: {imageKey}.jpg (keys in shared/constants.ts)
+    images/              # Hero / static imagery used by CSS
   src/
     App.tsx              # Routes, auth/session state, API calls
     main.tsx
     admin/               # Platform SaaS screens (barrel: index.ts)
     customer/            # Guest / QR ordering flow
-    restaurant/          # Tenant staff: KDS, menu, onboarding, etc.
-    layout/              # PortalLayout (sidebar + kitchen top bar), redirects
+    restaurant/          # Tenant staff: KDS, menu, onboarding, subscription, etc.
+    layout/              # PortalLayout (drawer vs sidebar), redirects
     shared/
       types.ts           # Shared TypeScript types
-      constants.ts       # PRODUCT_NAME, API_BASE (…/api/v1), demo data
+      constants.ts       # PRODUCT_NAME, API_BASE, VITE_*, menu image keys
       components/        # e.g. ScreenFrame
 ```
 
-**`apps/api/`**: NestJS HTTP API (global prefix **`api/v1`**) + **Prisma**:
+**`apps/api/`**: NestJS HTTP API (global prefix **`api/v1`**) + **Prisma**. See [`apps/api/README.md`](apps/api/README.md) for scripts, env, and route summary.
 
 ```
 apps/api/
   prisma/
-    schema.prisma        # Restaurant, User, MenuItem models
+    schema.prisma        # Tenants, users, menu, orders, subscriptions, …
     seed.ts              # Default admin, customer, tenants, demo logins
     migrations/          # SQL migrations (PostgreSQL)
   src/
-    main.ts              # Bootstrap, CORS, setGlobalPrefix('api/v1')
+    main.ts              # Bootstrap, CORS, setGlobalPrefix('api/v1'), PORT
     app.module.ts
     prisma/              # PrismaService (global module)
-    app.controller.ts    # GET /api/v1/ (health-style root)
-    auth/                # auth.controller → /api/v1/auth/*
-    admin/               # admin.controller → /api/v1/admin/*
-    restaurant/          # restaurant.controller → /api/v1/restaurant/*
-    data/                # StoreService (Prisma + bcrypt passwords)
+    app.controller.ts    # GET /api/v1/ (root)
+    auth/                # POST /api/v1/auth/login
+    admin/               # /api/v1/admin/* (requests, subscriptions, …)
+    restaurant/          # /api/v1/restaurant/* (menu, orders, users, …)
+    data/                # StoreService (Prisma + bcrypt)
 ```
 
 **Database (local):** From the repo root, start Postgres (`docker compose up -d db`), then in **`apps/api`** copy **`.env.example`** → **`.env`**, run **`npx prisma migrate deploy`**, then **`npm run prisma:seed`**. The API must be able to reach **`DATABASE_URL`** (default `postgresql://postgres:postgres@localhost:5434/restaurant_platform`).
@@ -110,10 +117,19 @@ apps/api/
 ```bash
 docker compose up -d db
 cd apps/api && cp .env.example .env   # if you don’t have .env yet
+npm install
 npx prisma migrate deploy
 npm run prisma:seed
 npm run start:dev
 ```
+
+In a **second terminal**, start the web UI:
+
+```bash
+cd apps/web && npm install && npm run dev
+```
+
+(Use **pnpm** in each `apps/*` folder if you prefer; see the package READMEs.)
 
 **Seed demo accounts** (bcrypt-hashed in DB):
 
@@ -126,7 +142,7 @@ npm run start:dev
 | Kitchen (KDS) | `kds@bbq.com` | `kds123` |
 | Pending onboarding (login blocked until admin approves) | `ava@tacorush.com`, `pending@grillco.com` | `owner123` |
 
-The web app uses **`DEMO_RESTAURANT_ID = 1`** when no restaurant session is active (matches the seeded approved tenant).
+The web app uses **`VITE_DEMO_RESTAURANT_ID`** (default **1**) when resolving demo tenant context; seed keeps approved tenant id **1** stable.
 
 **REST base URL:** `{API_ORIGIN}/api/v1`, e.g. `http://localhost:4000/api/v1/auth/login`  
 `VITE_API_URL` in the web app should be **only the origin** (no `/api/v1`); the client appends `/api/v1` automatically.
@@ -285,22 +301,15 @@ Payload minimum:
 
 ---
 
-## 10) Dockerized Development Setup (Target)
+## 10) Dockerized development (current)
 
-Planned `docker-compose.yml` services:
-- `api` (NestJS, port 4000)
-- `web` (React, port 3000)
-- `db` (Postgres, port 5432)
-- `redis` (port 6379, optional for MVP)
+**Checked in today:** `docker-compose.yml` defines **`db`** only (Postgres **16**, host port **5434** → container **5432**, database **`restaurant_platform`**).
 
-Environment examples:
-- API:
-  - `DATABASE_URL=postgresql://postgres:postgres@db:5432/mike_heard`
-  - `JWT_SECRET=change_me`
-  - `MEDIA_STORAGE=local`
-- Web:
-  - `VITE_API_URL=http://localhost:4000` (origin only; requests go to `/api/v1/...`)
-  - `VITE_WS_URL=http://localhost:4000`
+API and web are started **locally** (see § install/run above). Optional extra services (Redis, in-compose API/web) remain roadmap items.
+
+**API env** (see `apps/api/.env.example`): `PORT`, `DATABASE_URL`. **CORS:** localhost / 127.0.0.1 Vite origins are allowed by default; set **`CORS_ORIGINS`** (comma-separated) for additional front-end origins.
+
+**Web env:** `VITE_API_URL` (origin only; client calls `/api/v1/...`), optional `VITE_DEMO_RESTAURANT_ID`.
 
 ---
 
@@ -357,13 +366,11 @@ Paid later:
 
 ---
 
-## 14) Immediate Next Deliverables
+## 14) Implementation status (high level)
 
-1. Monorepo scaffold (`api` + `web`).
-2. Docker Compose with Postgres and Redis.
-3. Initial DB schema + migrations.
-4. Auth + menu CRUD endpoints.
-5. Customer order submission + kitchen realtime display.
+**In this repository today:** `apps/web` + `apps/api`, Prisma schema and migrations, seed data, auth login by role, restaurant registration and admin approval flow, tenant menu CRUD (with `imageKey` aligned to web `public/menu-food/*.jpg`), orders, subscriptions admin surface, and the customer / restaurant / admin UIs wired to **`/api/v1`**.
+
+**Still roadmap / partial:** full WebSocket customer–kitchen realtime as described in §8–9, compose-packaged API/web, Redis, SMS/push, and production hardening as listed in MVP phases above.
 
 ---
 

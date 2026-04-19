@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react'
 import { useState } from 'react'
 import { ScreenFrame } from '../shared/components/ScreenFrame'
+import { MENU_FOOD_IMAGE_KEYS, menuFoodImageSrc } from '../shared/constants'
 import type { MenuItem } from '../shared/types'
 
 function rowCategory(item: MenuItem) {
@@ -16,7 +17,10 @@ export function RestaurantMenuManage({
 }: {
   items: MenuItem[]
   onAddMenuItem: (item: MenuItem) => Promise<void>
-  onUpdateItem: (menuItemId: number, payload: { name: string; category: string; price: number; available: boolean }) => Promise<void>
+  onUpdateItem: (
+    menuItemId: number,
+    payload: { name: string; category: string; price: number; available: boolean; imageKey?: string | null },
+  ) => Promise<void>
   onRemoveItem: (menuItemId: number) => Promise<string | undefined>
   mode: 'manage' | 'view'
 }) {
@@ -25,6 +29,7 @@ export function RestaurantMenuManage({
   const [editCategory, setEditCategory] = useState('')
   const [editPrice, setEditPrice] = useState('')
   const [editAvailable, setEditAvailable] = useState(true)
+  const [editImageKey, setEditImageKey] = useState('default')
   const [rowBusy, setRowBusy] = useState<number | null>(null)
   const [formError, setFormError] = useState('')
 
@@ -35,12 +40,14 @@ export function RestaurantMenuManage({
     const form = new FormData(event.currentTarget)
     setFormError('')
     try {
+      const ik = String(form.get('imageKey') ?? '').trim() || 'default'
       await onAddMenuItem({
         name: String(form.get('itemName') ?? ''),
         description: `${String(form.get('category') ?? '')} • Available`,
         price: Number(form.get('price') ?? 0),
         category: String(form.get('category') ?? ''),
         available: true,
+        imageKey: ik,
       })
       event.currentTarget.reset()
     } catch (e) {
@@ -55,6 +62,7 @@ export function RestaurantMenuManage({
     setEditCategory(rowCategory(item))
     setEditPrice(String(item.price))
     setEditAvailable(item.available !== false)
+    setEditImageKey(item.imageKey && item.imageKey !== '' ? item.imageKey : 'default')
   }
 
   async function saveEdit() {
@@ -72,6 +80,7 @@ export function RestaurantMenuManage({
         category: editCategory.trim(),
         price,
         available: editAvailable,
+        imageKey: editImageKey,
       })
       setEditingId(null)
     } catch (e) {
@@ -91,6 +100,7 @@ export function RestaurantMenuManage({
         category: rowCategory(item),
         price: item.price,
         available: next,
+        imageKey: item.imageKey ?? null,
       })
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'Update failed')
@@ -126,10 +136,20 @@ export function RestaurantMenuManage({
       {formError ? <p className="error-text">{formError}</p> : null}
 
       {manage ? (
-        <form onSubmit={handleAddItem} className="inline-form">
+        <form onSubmit={handleAddItem} className="inline-form menu-add-form">
           <input className="field" name="itemName" placeholder="Menu item name" required />
           <input className="field" name="category" placeholder="Category (Steaks, Drinks)" required />
           <input className="field" name="price" placeholder="Price" type="number" min="0" step="0.01" required />
+          <label className="field-label menu-add-image-label">
+            Menu image
+            <select className="field" name="imageKey" defaultValue="default">
+              {MENU_FOOD_IMAGE_KEYS.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          </label>
           <button className="primary-btn" type="submit">
             + Add menu item
           </button>
@@ -145,7 +165,14 @@ export function RestaurantMenuManage({
 
         return (
           <article className="list-item menu-row" key={id ?? `${item.name}-${item.price}`}>
-            <div className="menu-thumb" aria-hidden />
+            <img
+              className="menu-thumb-img"
+              src={menuFoodImageSrc(item.imageKey)}
+              alt=""
+              width={56}
+              height={56}
+              loading="lazy"
+            />
             <div className="item-main">
               {editing ? (
                 <div className="menu-edit-block">
@@ -175,6 +202,20 @@ export function RestaurantMenuManage({
                       onChange={(e) => setEditAvailable(e.target.checked)}
                     />
                     Available on menu
+                  </label>
+                  <label className="field-label">
+                    Menu image
+                    <select
+                      className="field"
+                      value={editImageKey}
+                      onChange={(e) => setEditImageKey(e.target.value)}
+                    >
+                      {MENU_FOOD_IMAGE_KEYS.map((k) => (
+                        <option key={k} value={k}>
+                          {k}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <div className="menu-edit-actions">
                     <button type="button" className="primary-btn" disabled={busy} onClick={() => void saveEdit()}>

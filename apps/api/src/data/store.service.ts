@@ -65,6 +65,28 @@ export interface MenuItem {
   category: string;
   price: number;
   available: boolean;
+  imageKey: string | null;
+}
+
+const MENU_IMAGE_KEYS = new Set([
+  'burger',
+  'popcorn',
+  'hotdog',
+  'chowmein',
+  'drinks',
+  'bbq',
+  'sandwich',
+  'sides',
+  'salad',
+  'dessert',
+  'default',
+]);
+
+function normalizeMenuImageKey(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  const k = raw.trim().toLowerCase();
+  if (k === '') return null;
+  return MENU_IMAGE_KEYS.has(k) ? k : 'default';
 }
 
 /** Tenant-internal RBAC: maps UI access (Owner / Manager / Kitchen KDS). */
@@ -328,12 +350,13 @@ export class StoreService {
       category: item.category,
       price: item.price,
       available: item.available,
+      imageKey: item.imageKey ?? null,
     }));
   }
 
   async addMenuItem(
     restaurantId: number,
-    payload: Omit<MenuItem, 'id' | 'restaurantId' | 'available'>,
+    payload: { name: string; category: string; price: number; imageKey?: string | null },
   ) {
     const restaurant = await this.prisma.restaurant.findUnique({
       where: { id: restaurantId },
@@ -348,6 +371,10 @@ export class StoreService {
         category: payload.category,
         price: payload.price,
         available: true,
+        imageKey:
+          payload.imageKey === undefined || payload.imageKey === null || payload.imageKey === ''
+            ? null
+            : normalizeMenuImageKey(payload.imageKey),
       },
     });
     return {
@@ -357,13 +384,14 @@ export class StoreService {
       category: item.category,
       price: item.price,
       available: item.available,
+      imageKey: item.imageKey ?? null,
     };
   }
 
   async updateMenuItem(
     restaurantId: number,
     menuItemId: number,
-    dto: { name?: string; category?: string; price?: number; available?: boolean },
+    dto: { name?: string; category?: string; price?: number; available?: boolean; imageKey?: string | null },
   ) {
     const existing = await this.prisma.menuItem.findFirst({
       where: { id: menuItemId, restaurantId },
@@ -371,7 +399,13 @@ export class StoreService {
     if (!existing) {
       throw new NotFoundException(`Menu item ${menuItemId} not found`);
     }
-    const data: { name?: string; category?: string; price?: number; available?: boolean } = {};
+    const data: {
+      name?: string;
+      category?: string;
+      price?: number;
+      available?: boolean;
+      imageKey?: string | null;
+    } = {};
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (dto.category !== undefined) data.category = dto.category.trim();
     if (dto.price !== undefined) {
@@ -381,6 +415,10 @@ export class StoreService {
       data.price = dto.price;
     }
     if (dto.available !== undefined) data.available = dto.available;
+    if (dto.imageKey !== undefined) {
+      data.imageKey =
+        dto.imageKey === null || dto.imageKey === '' ? null : normalizeMenuImageKey(dto.imageKey);
+    }
     if (Object.keys(data).length === 0) {
       throw new BadRequestException('No fields to update');
     }
@@ -395,6 +433,7 @@ export class StoreService {
       category: item.category,
       price: item.price,
       available: item.available,
+      imageKey: item.imageKey ?? null,
     };
   }
 
@@ -423,6 +462,7 @@ export class StoreService {
           category: item.category,
           price: item.price,
           available: item.available,
+          imageKey: item.imageKey ?? null,
         },
       };
     }

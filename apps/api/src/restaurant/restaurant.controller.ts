@@ -17,6 +17,7 @@ interface CreateMenuItemDto {
   name: string;
   category: string;
   price: number;
+  imageKey?: string | null;
 }
 
 interface UpdateMenuItemDto {
@@ -24,6 +25,7 @@ interface UpdateMenuItemDto {
   category?: string;
   price?: number;
   available?: boolean;
+  imageKey?: string | null;
 }
 
 interface CreateRestaurantUserDto {

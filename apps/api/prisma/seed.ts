@@ -14,6 +14,26 @@ function trialEndsTwoMonthsFromNow() {
   return d;
 }
 
+function inferMenuImageKey(name: string, category: string): string {
+  const n = name.toLowerCase();
+  const c = category.toLowerCase();
+  if (n.includes('burger') || n.includes('slider')) return 'burger';
+  if (n.includes('popcorn') || n.includes('nachos')) return 'popcorn';
+  if (n.includes('hot dog') || n.includes('hotdog')) return 'hotdog';
+  if (n.includes('chow mein') || n.includes('chowmein') || n.includes('noodle')) return 'chowmein';
+  if (c.includes('drink') || /\b(tea|soda|lemonade|beer|wine|juice)\b/.test(n)) return 'drinks';
+  if (c.includes('sandwich')) return 'sandwich';
+  if (c.includes('salad')) return 'salad';
+  if (c.includes('dessert')) return 'dessert';
+  if (c.includes('side') || n.includes('fries') || n.includes('mac') || n.includes('beans') || n.includes('corn'))
+    return 'sides';
+  if (c.includes('pit bbq') || c.includes('bbq') || n.includes('brisket') || n.includes('ribs') || n.includes('combo'))
+    return 'bbq';
+  if (c.includes('steak') || n.includes('steak') || n.includes('chop')) return 'bbq';
+  if (c.includes('kid')) return 'default';
+  return 'default';
+}
+
 /** Seeds the `Subscription` catalog (API + admin UI). IDs 1–3 match migration defaults. */
 async function seedSubscriptionCatalog() {
   const free = await prisma.subscription.create({
@@ -140,7 +160,12 @@ async function main() {
     category: string;
     price: number;
     available?: boolean;
+    imageKey?: string;
   }> = [
+    { name: 'Classic Smash Burger', category: 'Sandwiches', price: 13.5, imageKey: 'burger' },
+    { name: 'Buttered Popcorn', category: 'Starters', price: 4.5, imageKey: 'popcorn' },
+    { name: 'Stadium Hot Dog', category: 'Sandwiches', price: 8.5, imageKey: 'hotdog' },
+    { name: 'Vegetable Chow Mein', category: 'Starters', price: 11, imageKey: 'chowmein' },
     // Starters & salads
     { name: 'Texas Caviar Dip', category: 'Starters', price: 9.5 },
     { name: 'Fried Pickle Chips', category: 'Starters', price: 8 },
@@ -204,6 +229,7 @@ async function main() {
       category: row.category,
       price: row.price,
       available: row.available !== false,
+      imageKey: row.imageKey ?? inferMenuImageKey(row.name, row.category),
     })),
   });
 
@@ -339,8 +365,20 @@ async function main() {
     if (row.status === 'APPROVED') {
       await prisma.menuItem.createMany({
         data: [
-          { restaurantId: r.id, name: 'House Salad', category: 'Starters', price: 9 },
-          { restaurantId: r.id, name: 'Chef Plate', category: 'Mains', price: 18 },
+          {
+            restaurantId: r.id,
+            name: 'House Salad',
+            category: 'Starters',
+            price: 9,
+            imageKey: inferMenuImageKey('House Salad', 'Starters'),
+          },
+          {
+            restaurantId: r.id,
+            name: 'Chef Plate',
+            category: 'Mains',
+            price: 18,
+            imageKey: inferMenuImageKey('Chef Plate', 'Mains'),
+          },
         ],
       })
     }

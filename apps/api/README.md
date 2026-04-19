@@ -1,127 +1,96 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# KitchenFlow — API (`apps/api`)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS HTTP service for **KitchenFlow**: multi-tenant restaurants, staff auth, menu and orders, platform admin (approvals, subscriptions). Persists to **PostgreSQL** via **Prisma**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+**Related docs:** [Monorepo overview](../../README.md) · [Web app](../web/README.md)
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Stack
 
-## Quick start (matches Cursor skill: `@init`)
+| Piece | Version / notes |
+|--------|------------------|
+| **NestJS** | 11.x (`@nestjs/common` / `core` / `platform-express`) |
+| **Prisma** | 5.22 (`schema.prisma`, migrations, `prisma/seed.ts`) |
+| **Auth** | bcrypt-hashed passwords; login returns role + tenant context (see `StoreService`) |
 
-### 1) Start Postgres (from repo root)
+---
+
+## HTTP surface
+
+- **Global prefix:** `api/v1` (e.g. `http://localhost:4000/api/v1/auth/login`)
+- **Port:** `process.env.PORT` or **4000**
+- **CORS:** Any `http://localhost:*` / `http://127.0.0.1:*` origin is allowed; add **`CORS_ORIGINS`** (comma-separated list) for other front-end URLs.
+
+---
+
+## Modules (src/)
+
+| Path | Role |
+|------|------|
+| `auth/` | `POST /auth/login` — body `{ role, email, password }` (`CUSTOMER` \| `RESTAURANT` \| `ADMIN`) |
+| `admin/` | Default owner metadata, restaurant request queue + approve, subscription catalog CRUD |
+| `restaurant/` | Per-tenant: profile, subscription read/update, **menu-items** CRUD, **orders** create/list/update, **users** list/create |
+| `data/` | `StoreService` — Prisma + bcrypt; shared business logic |
+| `prisma/` | `PrismaService`, global module |
+| `app.controller.ts` | `GET /api/v1/` — API root |
+
+Restaurant routes live under **`/restaurant/:restaurantId/...`** (see `restaurant.controller.ts` for exact paths).
+
+---
+
+## Environment
+
+Copy **`.env.example`** → **`.env`** in this directory.
+
+| Variable | Purpose |
+|----------|---------|
+| **`PORT`** | HTTP listen port (default `4000`) |
+| **`DATABASE_URL`** | Postgres connection string (local Docker: host port **5434**, db **`restaurant_platform`**) |
+| **`CORS_ORIGINS`** | Optional extra allowed browser origins (comma-separated) |
+
+---
+
+## Scripts
+
+From **`apps/api`**:
+
+```bash
+npm install
+npm run prisma:generate    # or: npx prisma generate
+npx prisma migrate deploy
+npm run prisma:seed
+npm run start:dev          # watch mode
+```
+
+Other useful commands (see `package.json`):
+
+- **`npm run build`** — `prisma generate` + `nest build`
+- **`npm run start:prod`** — `node dist/main`
+- **`npm run lint`** / **`npm test`**
+
+---
+
+## Database (local)
+
+From the **repository root**:
+
 ```bash
 docker compose up -d db
 ```
 
-### 2) Configure env + install deps
-```bash
-cd apps/api
-cp .env.example .env   # if you don't have .env yet
-pnpm install
-```
+Then apply migrations and seed (commands above). Demo accounts are listed in the **Seed demo accounts** table in the [root README](../../README.md).
 
-### 3) Run Prisma migrations + seed
-```bash
-pnpm prisma generate
-pnpm prisma migrate deploy
-pnpm prisma:seed
-```
+---
 
-### 4) Start API (dev)
-```bash
-pnpm start:dev
-```
+## Prisma
 
-API base URL:
-- `http://localhost:4000/api/v1`
+- **`prisma/schema.prisma`** — models (restaurants, users, menu items with optional `imageKey`, orders, subscriptions, …)
+- **`prisma/migrations/`** — SQL migrations
+- **`prisma/seed.ts`** — invoked via `npm run prisma:seed` (`prisma db seed` → `tsx prisma/seed.ts`)
 
-## Project setup
-
-```bash
-$ pnpm install
-```
-
-## Compile and run the project
-
-```bash
-# development
-$ pnpm start
-
-# watch mode
-$ pnpm start:dev
-
-# production mode
-$ pnpm start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Private / **UNLICENSED** for this product repo (see `package.json`). NestJS itself is MIT — [nestjs.com](https://nestjs.com/).

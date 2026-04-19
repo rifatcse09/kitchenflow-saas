@@ -3,6 +3,29 @@ import type { MenuItem, OrderItem } from './types'
 /** Product / platform name */
 export const PRODUCT_NAME = 'KitchenFlow'
 
+/** Must match API `MENU_IMAGE_KEYS` + files in `public/menu-food/*.jpg`. */
+export const MENU_FOOD_IMAGE_KEYS = [
+  'burger',
+  'popcorn',
+  'hotdog',
+  'chowmein',
+  'drinks',
+  'bbq',
+  'sandwich',
+  'sides',
+  'salad',
+  'dessert',
+  'default',
+] as const
+
+export type MenuFoodImageKey = (typeof MENU_FOOD_IMAGE_KEYS)[number]
+
+export function menuFoodImageSrc(imageKey: string | null | undefined): string {
+  const k = (imageKey ?? '').trim().toLowerCase()
+  const safe = MENU_FOOD_IMAGE_KEYS.includes(k as MenuFoodImageKey) ? k : 'default'
+  return `/menu-food/${safe}.jpg`
+}
+
 /** API origin only (no path). Fetches use `/api/v1/...` on this host. */
 const API_ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000').replace(/\/$/, '')
 export const API_BASE = `${API_ORIGIN}/api/v1`

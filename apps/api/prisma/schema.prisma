@@ -123,6 +123,8 @@ model MenuItem {
   category     String
   price        Float
   available    Boolean    @default(true)
+  /// Slug for `/menu-food/{imageKey}.jpg` in the web app (burger, drinks, …).
+  imageKey     String?
   orderLines   GuestOrderLine[]
 }
 

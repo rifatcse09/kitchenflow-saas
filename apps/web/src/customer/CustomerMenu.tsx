@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { API_BASE } from '../shared/constants'
+import { API_BASE, menuFoodImageSrc } from '../shared/constants'
 import { ScreenFrame } from '../shared/components/ScreenFrame'
 import { useCustomerGuest } from './useCustomerGuest'
 
@@ -10,6 +10,7 @@ type ApiMenuItem = {
   category: string
   price: number
   available: boolean
+  imageKey?: string | null
 }
 
 export function CustomerMenu() {
@@ -195,9 +196,16 @@ export function CustomerMenu() {
                 <section key={section.label} className="customer-menu-category-block">
                   <h3 className="customer-category-heading">{section.label}</h3>
                   <div className="customer-menu-list">
-                    {section.items.map((item, index) => (
+                    {section.items.map((item) => (
                       <article key={item.id} className="list-item customer-menu-item menu-row">
-                        <div className={`menu-food-thumb food-${(index % 6) + 1}`} aria-hidden />
+                        <img
+                          className="menu-food-thumb menu-food-thumb-img"
+                          src={menuFoodImageSrc(item.imageKey)}
+                          alt=""
+                          loading="lazy"
+                          width={62}
+                          height={62}
+                        />
                         <div className="item-main">
                           <h4>{item.name}</h4>
                           <p>{item.category}</p>

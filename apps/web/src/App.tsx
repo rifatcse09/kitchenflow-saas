@@ -120,6 +120,7 @@ function App() {
         category: string
         price: number
         available: boolean
+        imageKey?: string | null
       }>
       setRestaurantMenu(
         menuData.map((item) => ({
@@ -129,6 +130,7 @@ function App() {
           available: item.available,
           description: `${item.category} • ${item.available ? 'Available' : 'Unavailable'}`,
           price: item.price,
+          imageKey: item.imageKey ?? null,
         })),
       )
     }
@@ -203,6 +205,7 @@ function App() {
         name: item.name,
         category,
         price: item.price,
+        imageKey: item.imageKey ?? undefined,
       }),
     })
     await refreshTenantData(activeTenantId)
@@ -210,7 +213,7 @@ function App() {
 
   async function updateMenuItem(
     menuItemId: number,
-    payload: { name: string; category: string; price: number; available: boolean },
+    payload: { name: string; category: string; price: number; available: boolean; imageKey?: string | null },
   ) {
     const res = await fetch(`${API_BASE}/restaurant/${activeTenantId}/menu-items/${menuItemId}`, {
       method: 'PATCH',
@@ -284,14 +287,12 @@ function App() {
       ]
     }
     return [
-      { to: '/customer/welcome', label: 'Welcome / QR' },
+      { to: '/customer/welcome', label: 'Home' },
       { to: '/customer/menu', label: 'Menu' },
-      { to: '/customer/cart', label: 'Cart & checkout' },
-      { to: '/customer/tracking', label: 'Order status' },
-      { to: '/customer/record-audio', label: 'Audio (optional)' },
-      { to: '/customer/record-video', label: 'Video (optional)' },
-      { to: '/customer/login', label: 'Login (optional)' },
-      { to: '/customer/register', label: 'Register (demo)' },
+      { to: '/customer/cart', label: 'Cart' },
+      { to: '/customer/tracking', label: 'Orders' },
+      { to: '/customer/login', label: 'Log in' },
+      { to: '/customer/register', label: 'Register' },
     ]
   }, [authState.customer])
 

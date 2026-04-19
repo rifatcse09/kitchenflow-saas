@@ -6,6 +6,8 @@ export type MenuItem = {
   /** Set when loaded from API (edit/delete) */
   category?: string
   available?: boolean
+  /** Photo slug → `/menu-food/{imageKey}.jpg` */
+  imageKey?: string | null
 }
 export type OrderItem = { name: string; qty: number; note?: string; price: number }
 
