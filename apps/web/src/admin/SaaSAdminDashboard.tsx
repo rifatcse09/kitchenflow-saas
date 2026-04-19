@@ -10,7 +10,8 @@ export function SaaSAdminDashboard({
   return (
     <ScreenFrame
       title="SaaS control center"
-      subtitle="Super Admin — subscriptions, onboarding queue, tenant health (mock)"
+      subtitle="Super Admin: subscriptions, onboarding queue, tenant health (mock)"
+      frameClassName="admin-portal-screen"
     >
       <div className="stats-grid">
         <div className="stat-card">

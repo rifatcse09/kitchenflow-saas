@@ -81,31 +81,57 @@ export function CustomerCart() {
       subtitle={`${session.restaurantName ?? 'Restaurant'} · Table ${session.tableCode}`}
       frameClassName="customer-vibe-screen"
     >
-      <form onSubmit={handleSubmit}>
-        {cart.map((line) => (
-          <article key={line.menuItemId} className="list-item customer-menu-item">
-            <div>
-              <h4>{line.name}</h4>
-              <p>${line.price} each</p>
-              <label className="field-label">
-                Qty
-                <input
-                  className="field"
-                  type="number"
-                  min={1}
-                  value={line.qty}
-                  onChange={(ev) => updateQty(line.menuItemId, Number(ev.target.value) || 1)}
-                />
-              </label>
-            </div>
-            <div className="menu-row-actions">
-              <strong>${(line.price * line.qty).toFixed(2)}</strong>
-              <button type="button" className="ghost-btn" onClick={() => removeLine(line.menuItemId)}>
-                Remove
-              </button>
-            </div>
-          </article>
-        ))}
+      <form className="customer-cart-form" onSubmit={handleSubmit}>
+        {cart.map((line) => {
+          const lineTotal = line.price * line.qty
+          const unitLabel =
+            line.price % 1 === 0 ? `$${line.price.toFixed(0)}` : `$${line.price.toFixed(2)}`
+          return (
+            <article
+              key={line.menuItemId}
+              className="list-item customer-menu-item customer-cart-line"
+            >
+              <div className="customer-cart-line-top">
+                <h4>{line.name}</h4>
+                <strong className="customer-cart-line-total">${lineTotal.toFixed(2)}</strong>
+              </div>
+              <p className="customer-cart-line-unit">{unitLabel} each</p>
+              <div className="customer-cart-line-controls">
+                <div className="customer-cart-qty-block">
+                  <span className="field-label customer-cart-qty-label">Quantity</span>
+                  <div className="qty-stepper" role="group" aria-label={`Quantity for ${line.name}`}>
+                    <button
+                      type="button"
+                      className="qty-stepper-btn"
+                      aria-label="Decrease quantity"
+                      disabled={line.qty <= 1}
+                      onClick={() => updateQty(line.menuItemId, Math.max(1, line.qty - 1))}
+                    >
+                      <span aria-hidden="true">−</span>
+                    </button>
+                    <span className="qty-stepper-value">{line.qty}</span>
+                    <button
+                      type="button"
+                      className="qty-stepper-btn"
+                      aria-label="Increase quantity"
+                      disabled={line.qty >= 99}
+                      onClick={() => updateQty(line.menuItemId, Math.min(99, line.qty + 1))}
+                    >
+                      <span aria-hidden="true">+</span>
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="customer-cart-remove"
+                  onClick={() => removeLine(line.menuItemId)}
+                >
+                  Remove
+                </button>
+              </div>
+            </article>
+          )
+        })}
 
         <div className="total-row">
           <span>Subtotal</span>
@@ -113,7 +139,7 @@ export function CustomerCart() {
         </div>
 
         <h3 className="section-title">Optional contact (receipts & updates)</h3>
-        <p className="hint">No account needed. Leave blank if you prefer — you can still order.</p>
+        <p className="hint">No account needed. Leave blank if you prefer. You can still order.</p>
         <label className="field-label">
           Mobile
           <input

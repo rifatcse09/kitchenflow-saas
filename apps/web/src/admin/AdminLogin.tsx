@@ -30,7 +30,11 @@ export function AdminLogin({
   }
 
   return (
-    <ScreenFrame title="Platform Admin Login" subtitle="Rifat authorized access only">
+    <ScreenFrame
+      title="Platform Admin Login"
+      subtitle="Rifat authorized access only"
+      frameClassName="admin-portal-screen"
+    >
       <div className="hint">
         Default Owner: {platformOwner.name} ({platformOwner.email}) / {platformOwner.passwordHint}
       </div>

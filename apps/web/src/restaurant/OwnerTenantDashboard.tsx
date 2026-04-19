@@ -4,7 +4,7 @@ export function OwnerTenantDashboard() {
   return (
     <ScreenFrame
       title="Owner dashboard"
-      subtitle="Daily sales, popular items — tenant-scoped state"
+      subtitle="Daily sales, popular items (tenant-scoped state)"
     >
       <div className="stats-grid">
         <div className="stat-card">

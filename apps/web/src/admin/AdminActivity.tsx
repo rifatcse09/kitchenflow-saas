@@ -2,7 +2,11 @@ import { ScreenFrame } from '../shared/components/ScreenFrame'
 
 export function AdminActivity() {
   return (
-    <ScreenFrame title="System Activity" subtitle="Platform audit stream">
+    <ScreenFrame
+      title="System Activity"
+      subtitle="Platform audit stream"
+      frameClassName="admin-portal-screen"
+    >
       <div className="timeline">
         <div className="timeline-item done">[18:02] Restaurant approved: Grill & Co</div>
         <div className="timeline-item done">[17:48] Order volume spike alert in tenant #R102</div>

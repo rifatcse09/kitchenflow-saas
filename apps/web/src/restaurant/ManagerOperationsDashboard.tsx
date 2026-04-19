@@ -2,7 +2,7 @@ import { ScreenFrame } from '../shared/components/ScreenFrame'
 
 export function ManagerOperationsDashboard() {
   return (
-    <ScreenFrame title="Store operations" subtitle="Manager — shifts, availability, SLA (mock)">
+    <ScreenFrame title="Store operations" subtitle="Manager: shifts, availability, SLA (mock)">
       <div className="stats-grid">
         <div className="stat-card">
           <h4>Shift orders</h4>

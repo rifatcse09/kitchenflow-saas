@@ -32,13 +32,13 @@ export function OwnerOnboardingWizard({ tenantId }: { tenantId: number }) {
         </button>
       </div>
       {step === 1 ? (
-        <p className="hint">Brand, tax, hours — maps to `restaurants` tenant row.</p>
+        <p className="hint">Brand, tax, hours (maps to `restaurants` tenant row).</p>
       ) : null}
       {step === 2 ? <p className="hint">Menu CSV import or Menu manager when live.</p> : null}
       {step === 3 ? (
         <p className="hint">
           After go-live, print QR codes from <strong>Table QR links</strong> (<code>/restaurant/qr-codes</code>).
-          Guest URLs look like <code>/customer/r/1/t/T12</code> (tenant id + table code) — no login.
+          Guest URLs look like <code>/customer/r/1/t/T12</code> (tenant id + table code). No login.
         </p>
       ) : null}
       <button

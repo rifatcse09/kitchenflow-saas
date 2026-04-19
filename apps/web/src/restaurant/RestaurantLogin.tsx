@@ -33,7 +33,11 @@ export function RestaurantLogin({
   }
 
   return (
-    <ScreenFrame title="Restaurant Client Login" subtitle="Owner / Manager / Kitchen Staff (RBAC)">
+    <ScreenFrame
+      title="Restaurant Client Login"
+      subtitle="Owner / Manager / Kitchen Staff (RBAC)"
+      frameClassName="restaurant-portal-screen"
+    >
       <div className="hint">
         Demo: manager@bbq.com / manager123 • kds@bbq.com / kds123 (kitchen)
       </div>

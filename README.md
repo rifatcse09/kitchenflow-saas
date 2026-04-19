@@ -61,11 +61,11 @@ Run the Vite dev server (`apps/web`), then open paths relative to the app origin
 
 Log in per portal (customer / restaurant staff / admin) to see the full sidebar or top navigation. The API (`apps/api`, default **http://localhost:4000**) should be running if you need live data. REST endpoints use the global prefix **`/api/v1`** (see below).
 
-**Static prototype:** `ui-design-prototype.html` at the repo root — open the file in a browser (not served by Vite unless you wire it up).
+**Static prototype:** `ui-design-prototype.html` at the repo root. Open the file in a browser (not served by Vite unless you wire it up).
 
 ### Repository layout (`apps/web` & `apps/api`)
 
-**`apps/web/`** — React (Vite) SPA, feature folders by portal:
+**`apps/web/`**: React (Vite) SPA, feature folders by portal:
 
 ```
 apps/web/
@@ -82,7 +82,7 @@ apps/web/
       components/        # e.g. ScreenFrame
 ```
 
-**`apps/api/`** — NestJS HTTP API (global prefix **`api/v1`**) + **Prisma**:
+**`apps/api/`**: NestJS HTTP API (global prefix **`api/v1`**) + **Prisma**:
 
 ```
 apps/api/
@@ -128,14 +128,14 @@ npm run start:dev
 
 The web app uses **`DEMO_RESTAURANT_ID = 1`** when no restaurant session is active (matches the seeded approved tenant).
 
-**REST base URL:** `{API_ORIGIN}/api/v1` — e.g. `http://localhost:4000/api/v1/auth/login`  
+**REST base URL:** `{API_ORIGIN}/api/v1`, e.g. `http://localhost:4000/api/v1/auth/login`  
 `VITE_API_URL` in the web app should be **only the origin** (no `/api/v1`); the client appends `/api/v1` automatically.
 
 **Frontend → backend connection**
 
 1. Start the API (`apps/api`, default port **4000**) so CORS allows `http://localhost:5173` (Vite).
 2. The React app reads **`import.meta.env.VITE_API_URL`** and builds **`API_BASE` = `{VITE_API_URL}/api/v1`** in `apps/web/src/shared/constants.ts`. All `fetch()` calls in `App.tsx` use that base (e.g. `/auth/login`, `/admin/...`).
-3. **`.env` file:** optional for local dev — if unset, the code falls back to **`http://localhost:4000`**. Use a file when the API runs elsewhere (another port, Docker hostname, staging). Copy **`apps/web/.env.example`** to **`.env`** or **`.env.local`** and set `VITE_API_URL=...`. Restart `npm run dev` after changing env vars.
+3. **`.env` file:** optional for local dev. If unset, the code falls back to **`http://localhost:4000`**. Use a file when the API runs elsewhere (another port, Docker hostname, staging). Copy **`apps/web/.env.example`** to **`.env`** or **`.env.local`** and set `VITE_API_URL=...`. Restart `npm run dev` after changing env vars.
 4. Only variables prefixed with **`VITE_`** are exposed to the browser (Vite rule).
 
 ---

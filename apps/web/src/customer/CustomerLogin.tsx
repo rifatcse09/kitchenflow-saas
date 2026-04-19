@@ -25,7 +25,7 @@ export function CustomerLogin({
   }
 
   return (
-    <ScreenFrame title="Customer Login" subtitle="Sign in before ordering">
+    <ScreenFrame title="Customer Login" subtitle="Sign in before ordering" frameClassName="customer-vibe-screen">
       <div className="hint">Demo: customer@demo.com / customer123</div>
       <form onSubmit={handleSubmit}>
         <label className="field-label">

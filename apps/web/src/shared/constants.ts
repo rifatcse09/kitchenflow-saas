@@ -6,8 +6,8 @@ export const PRODUCT_NAME = 'KitchenFlow'
 /** API origin only (no path). Fetches use `/api/v1/...` on this host. */
 const API_ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000').replace(/\/$/, '')
 export const API_BASE = `${API_ORIGIN}/api/v1`
-/** Default tenant when not logged in (matches seeded approved restaurant, usually id `1`) */
-export const DEMO_RESTAURANT_ID = 1
+/** Default tenant when not logged in (seed resets serials so this stays `1`; override via Vite env if needed). */
+export const DEMO_RESTAURANT_ID = Number(import.meta.env.VITE_DEMO_RESTAURANT_ID) || 1
 
 export const demoMenuItems: MenuItem[] = [
   { name: 'Ribeye Steak', description: '12oz, steak fries, house sauce', price: 29 },

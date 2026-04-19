@@ -39,7 +39,11 @@ export function RestaurantRegister({
   }
 
   return (
-    <ScreenFrame title="Restaurant Registration" subtitle="Submit onboarding request to platform admin">
+    <ScreenFrame
+      title="Restaurant Registration"
+      subtitle="Submit onboarding request to platform admin"
+      frameClassName="restaurant-portal-screen"
+    >
       <form onSubmit={handleSubmit}>
         <label className="field-label">
           Owner Name

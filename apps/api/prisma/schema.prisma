@@ -32,6 +32,12 @@ enum RestaurantStatus {
   APPROVED
 }
 
+/// How guest orders are limited for a subscription product
+enum SubscriptionEnforcement {
+  TRIAL_TIME_AND_ORDERS
+  PRO_UNLIMITED
+}
+
 enum OrderStatus {
   PENDING
   COOKING
@@ -40,16 +46,46 @@ enum OrderStatus {
   CANCELLED
 }
 
+model Subscription {
+  id                   Int                     @id @default(autoincrement())
+  slug                 String                  @unique
+  name                 String
+  description          String?
+  active               Boolean                 @default(true)
+  sortOrder            Int                     @default(0)
+  enforcement          SubscriptionEnforcement
+  /// Months added to `trialEndsAt` from assignment for trial-tier plans.
+  trialDurationMonths  Int                     @default(2)
+  /// Guest orders included when assigning a trial-tier plan.
+  guestOrderTrialCap   Int                     @default(10)
+  /// For paid tiers: how far out `trialEndsAt` is set (legacy visibility window).
+  paidWindowMonths     Int                     @default(120)
+  /// For PRO_UNLIMITED: months until `proRenewsAt` from assignment; null for trial-only.
+  renewalPeriodMonths  Int?
+  /// Guest-order budget stored on the restaurant when on a paid tier (demo “unlimited”).
+  guestOrderPaidBudget Int                     @default(999999)
+  priceCents           Int?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  restaurants          Restaurant[]
+}
+
 model Restaurant {
-  id        Int                @id @default(autoincrement())
-  name      String
-  city      String
-  status    RestaurantStatus   @default(PENDING)
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  menuItems MenuItem[]
-  users     User[]
-  orders    GuestOrder[]
+  id               Int                @id @default(autoincrement())
+  name             String
+  city             String
+  status           RestaurantStatus   @default(PENDING)
+  subscriptionId   Int
+  subscription     Subscription       @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  trialEndsAt      DateTime
+  trialOrdersRemaining Int            @default(10)
+  /// When on paid tiers, next renewal anchor (demo).
+  proRenewsAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  menuItems          MenuItem[]
+  users              User[]
+  orders             GuestOrder[]
 }
 
 model GuestOrder {
@@ -58,7 +94,7 @@ model GuestOrder {
   restaurant      Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   /// Table / seat code from QR (e.g. T12)
   tableCode       String
-  /// Optional — saved for receipts & future marketing (no account required)
+  /// Optional: saved for receipts & future marketing (no account required)
   customerPhone   String?
   customerEmail   String?
   status          OrderStatus  @default(PENDING)

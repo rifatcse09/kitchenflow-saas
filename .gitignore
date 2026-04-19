@@ -1,4 +1,4 @@
-# Dependencies (any depth — monorepo apps)
+# Dependencies (any depth, monorepo apps)
 node_modules/
 **/node_modules/
 

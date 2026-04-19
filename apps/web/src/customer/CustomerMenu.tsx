@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { API_BASE } from '../shared/constants'
 import { ScreenFrame } from '../shared/components/ScreenFrame'
@@ -17,6 +17,13 @@ export function CustomerMenu() {
   const [items, setItems] = useState<ApiMenuItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [category, setCategory] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const menuScrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    menuScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [category])
 
   useEffect(() => {
     if (!session) {
@@ -41,6 +48,42 @@ export function CustomerMenu() {
     }
   }, [session])
 
+  const categories = useMemo(() => {
+    const set = new Set(items.map((i) => i.category))
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [items])
+
+  const filtered = useMemo(() => {
+    if (category === 'all') return items
+    return items.filter((i) => i.category === category)
+  }, [items, category])
+
+  const visibleItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return filtered
+    return filtered.filter(
+      (i) => i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q),
+    )
+  }, [filtered, searchQuery])
+
+  const searchTrimmed = searchQuery.trim().toLowerCase()
+
+  const menuSections = useMemo(() => {
+    if (visibleItems.length === 0) return []
+    if (category !== 'all') {
+      return [{ label: category, items: visibleItems }]
+    }
+    const m = new Map<string, ApiMenuItem[]>()
+    for (const item of visibleItems) {
+      const arr = m.get(item.category) ?? []
+      arr.push(item)
+      m.set(item.category, arr)
+    }
+    return Array.from(m.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([label, sectionItems]) => ({ label, items: sectionItems }))
+  }, [category, visibleItems])
+
   if (!session) {
     return (
       <ScreenFrame title="Scan a table QR" subtitle="No login required" frameClassName="customer-vibe-screen">
@@ -63,7 +106,12 @@ export function CustomerMenu() {
         subtitle={`${session.restaurantName ?? 'Restaurant'} · ${session.tableCode}`}
         frameClassName="customer-vibe-screen"
       >
-        <p className="hint">Loading…</p>
+        <div className="customer-menu-skeleton" aria-busy="true" aria-label="Loading menu">
+          <div className="customer-menu-skeleton-row" />
+          <div className="customer-menu-skeleton-row" />
+          <div className="customer-menu-skeleton-row" />
+          <div className="customer-menu-skeleton-row" />
+        </div>
       </ScreenFrame>
     )
   }
@@ -77,61 +125,121 @@ export function CustomerMenu() {
   }
 
   const cartCount = cart.reduce((s, l) => s + l.qty, 0)
+  const subtitleParts = [`Table ${session.tableCode}`]
+  if (searchTrimmed) {
+    subtitleParts.push(`${visibleItems.length} match${visibleItems.length === 1 ? '' : 'es'}`)
+  } else if (category === 'all') {
+    subtitleParts.push(`${items.length} dishes`)
+  } else {
+    subtitleParts.push(`${visibleItems.length} in ${category}`)
+  }
 
   return (
     <ScreenFrame
       title={session.restaurantName ?? 'Menu'}
-      subtitle={`Table ${session.tableCode} · ${items.length} items`}
+      subtitle={subtitleParts.join(' · ')}
       frameClassName="customer-vibe-screen"
-      headerAction={
-        <button type="button" className="customer-hamburger" aria-label="Open menu">
-          ☰
-        </button>
-      }
     >
-      <div className="customer-menu-content">
-        <div className="chips vibe-tabs">
-          <span className="chip active">Steaks</span>
-          <span className="chip">BBQ Plates</span>
-          <span className="chip">Sides</span>
-          <span className="chip">Drinks</span>
-        </div>
+        <div className="customer-menu-stack">
+          <div ref={menuScrollRef} className="customer-menu-scroll">
+            <div className="customer-menu-top">
+              <label className="customer-menu-search">
+                <span className="sr-only">Search menu by dish name or category</span>
+                <input
+                  type="search"
+                  className="customer-menu-search-input"
+                  placeholder="Search dishes…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
+                  enterKeyHint="search"
+                />
+              </label>
 
-        <div className="customer-menu-list">
-          {items.map((item, index) => (
-            <article key={item.id} className="list-item customer-menu-item">
-              <div className={`menu-food-thumb food-${(index % 4) + 1}`} aria-hidden />
-              <div>
-                <h4>{item.name}</h4>
-                <p>{item.category}</p>
-                <small>+ Add Note</small>
-              </div>
-              <div className="menu-row-actions">
-                <strong>${item.price}</strong>
+              <div className="chips vibe-tabs customer-menu-chips" role="tablist" aria-label="Menu categories">
                 <button
                   type="button"
-                  className="ghost-btn"
-                  onClick={() =>
-                    addToCart({
-                      menuItemId: item.id,
-                      name: item.name,
-                      price: item.price,
-                      qty: 1,
-                    })
-                  }
+                  role="tab"
+                  aria-selected={category === 'all'}
+                  className={`chip chip-btn${category === 'all' ? ' active' : ''}`}
+                  onClick={() => setCategory('all')}
                 >
-                  Add
+                  All
                 </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    role="tab"
+                    aria-selected={category === cat}
+                    className={`chip chip-btn${category === cat ? ' active' : ''}`}
+                    onClick={() => setCategory(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
               </div>
-            </article>
-          ))}
-        </div>
+            </div>
 
-        <Link to="/customer/cart" className="customer-cart-bar">
-          <span>View Order</span>
-          <strong>{cartCount} item{cartCount === 1 ? '' : 's'}</strong>
-        </Link>
-      </div>
+            {visibleItems.length === 0 ? (
+              <div className="customer-menu-list">
+                <p className="hint">
+                  {filtered.length === 0
+                    ? 'No dishes in this category right now.'
+                    : `No dishes match “${searchQuery.trim()}”. Try another search or category.`}
+                </p>
+              </div>
+            ) : (
+              menuSections.map((section) => (
+                <section key={section.label} className="customer-menu-category-block">
+                  <h3 className="customer-category-heading">{section.label}</h3>
+                  <div className="customer-menu-list">
+                    {section.items.map((item, index) => (
+                      <article key={item.id} className="list-item customer-menu-item menu-row">
+                        <div className={`menu-food-thumb food-${(index % 6) + 1}`} aria-hidden />
+                        <div className="item-main">
+                          <h4>{item.name}</h4>
+                          <p>{item.category}</p>
+                          <small>Add a note at checkout · pit-smoked when listed</small>
+                        </div>
+                        <div className="menu-row-actions">
+                          <strong>${item.price % 1 === 0 ? item.price.toFixed(0) : item.price.toFixed(2)}</strong>
+                          <button
+                            type="button"
+                            className="ghost-btn customer-add-cart-btn"
+                            onClick={() =>
+                              addToCart({
+                                menuItemId: item.id,
+                                name: item.name,
+                                price: item.price,
+                                qty: 1,
+                              })
+                            }
+                          >
+                            Add to cart
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ))
+            )}
+          </div>
+
+          <div className="customer-menu-dock customer-menu-dock--fixed">
+            <Link to="/customer/tracking" className="customer-menu-dock-status">
+              Order status
+            </Link>
+            <Link to="/customer/cart" className="customer-menu-dock-cart">
+              <span>View cart</span>
+              <strong>
+                {cartCount} item{cartCount === 1 ? '' : 's'}
+              </strong>
+            </Link>
+          </div>
+        </div>
     </ScreenFrame>
   )
 }

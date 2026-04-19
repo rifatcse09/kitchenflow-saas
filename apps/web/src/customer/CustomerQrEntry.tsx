@@ -48,7 +48,7 @@ export function CustomerQrEntry() {
 
   if (error) {
     return (
-      <ScreenFrame title="QR link" subtitle="Could not start your session">
+      <ScreenFrame title="QR link" subtitle="Could not start your session" frameClassName="customer-vibe-screen">
         <p className="error-text">{error}</p>
         <button type="button" className="primary-btn" onClick={() => navigate('/customer/welcome')}>
           Back to welcome
@@ -58,7 +58,7 @@ export function CustomerQrEntry() {
   }
 
   return (
-    <ScreenFrame title="Opening menu…" subtitle="Loading restaurant from QR">
+    <ScreenFrame title="Opening menu…" subtitle="Loading restaurant from QR" frameClassName="customer-vibe-screen">
       <p className="hint">One moment.</p>
     </ScreenFrame>
   )
